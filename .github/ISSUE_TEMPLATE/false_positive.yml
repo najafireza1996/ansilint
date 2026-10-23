@@ -1,0 +1,42 @@
+name: False positive
+description: ansilint reported a finding that upstream does not report
+title: "false-positive: "
+labels: ["false-positive", "needs-repro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A false positive is a P0 bug. Please include the smallest input that
+        reproduces it and the rule tag from the output.
+  - type: input
+    id: rule
+    attributes:
+      label: Rule / tag
+      description: E.g. `fqcn[canonical]` or `yaml[truthy]`.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Input and command
+      description: Minimal YAML plus the exact ansilint invocation and config.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: ansilint output
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream behavior
+      description: What does `ansible-lint` report for the same input (version included)?
+  - type: markdown
+    attributes:
+      value: |
+        Unknown modules, Jinja values and YAML anchors/merge keys should never be
+        guessed. If the finding comes from missing index data, say so.

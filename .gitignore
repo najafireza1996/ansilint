@@ -1,0 +1,7 @@
+/target
+.DS_Store
+**/*.rs.bk
+/.idea/
+/.vscode/
+/tests/compat/*
+!/tests/compat/README.md

@@ -1,0 +1,8 @@
+cognitive-complexity-threshold = 15
+too-many-arguments-threshold = 5
+too-many-lines-threshold = 50
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+disallowed-names = ["foo", "bar", "baz", "tmp", "data", "info", "util", "helper", "manager"]

@@ -1,0 +1,51 @@
+# The ONLY allowed intra-workspace dependency edges (ENG-01).
+# Enforced by `cargo xtask check`, which parses `cargo metadata`.
+
+[edges]
+ansilint-core = []
+ansilint-yaml = ["ansilint-core"]
+ansilint-model = ["ansilint-core", "ansilint-yaml"]
+ansilint-config = ["ansilint-core", "ansilint-yaml"]
+ansilint-index = ["ansilint-core"]
+ansilint-schema = ["ansilint-core", "ansilint-yaml"]
+ansilint-jinja = ["ansilint-core"]
+ansilint-rules = [
+  "ansilint-core",
+  "ansilint-yaml",
+  "ansilint-model",
+  "ansilint-config",
+  "ansilint-index",
+  "ansilint-schema",
+  "ansilint-jinja",
+]
+ansilint-fix = ["ansilint-core", "ansilint-yaml"]
+ansilint-output = ["ansilint-core"]
+ansilint-engine = [
+  "ansilint-core",
+  "ansilint-yaml",
+  "ansilint-model",
+  "ansilint-config",
+  "ansilint-index",
+  "ansilint-schema",
+  "ansilint-rules",
+  "ansilint-fix",
+  "ansilint-output",
+]
+ansilint-lsp = ["ansilint-core", "ansilint-engine"]
+ansilint-cli = ["ansilint-core", "ansilint-engine", "ansilint-lsp", "ansilint-output"]
+# ansilint-testing is a dev-dependency only; any crate may use it under [dev-dependencies].
+
+[pure_crates]
+# Must not touch I/O (ENG-02). Each directory has its own clippy.toml.
+list = [
+  "ansilint-core",
+  "ansilint-yaml",
+  "ansilint-model",
+  "ansilint-config",
+  "ansilint-rules",
+  "ansilint-index",
+  "ansilint-schema",
+  "ansilint-jinja",
+  "ansilint-fix",
+  "ansilint-output",
+]

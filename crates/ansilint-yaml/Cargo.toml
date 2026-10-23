@@ -1,0 +1,13 @@
+[package]
+name = "ansilint-yaml"
+description = "Lossless-enough YAML AST with source spans, comments and multi-document support."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true

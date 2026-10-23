@@ -1,0 +1,13 @@
+[package]
+name = "ansilint-output"
+description = "Output formatters that render findings into a caller-provided sink."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true

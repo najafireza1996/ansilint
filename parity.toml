@@ -1,0 +1,5 @@
+# Rule parity relative to upstream ansible-lint.
+# status: implemented | partial | planned | not-planned
+# Regenerate docs/PARITY.md with `cargo xtask gen-parity`.
+
+[rules]

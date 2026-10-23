@@ -1,0 +1,16 @@
+# ENG-02: this crate is pure; I/O belongs to ansilint-engine (or the binaries).
+disallowed-methods = [
+  { path = "std::fs::read", reason = "pure crate: I/O belongs to ansilint-engine" },
+  { path = "std::fs::read_to_string", reason = "pure crate: I/O belongs to ansilint-engine" },
+  { path = "std::fs::read_dir", reason = "pure crate: I/O belongs to ansilint-engine" },
+  { path = "std::fs::write", reason = "pure crate: I/O belongs to ansilint-engine" },
+  { path = "std::fs::metadata", reason = "pure crate: I/O belongs to ansilint-engine" },
+  { path = "std::env::var", reason = "pure crate: pass configuration explicitly" },
+  { path = "std::env::vars", reason = "pure crate: pass configuration explicitly" },
+  { path = "std::process::Command::new", reason = "pure crate: no subprocesses" },
+  { path = "std::time::SystemTime::now", reason = "pure crate: no clocks (determinism)" },
+]
+disallowed-types = [
+  { path = "std::fs::File", reason = "pure crate: no filesystem" },
+  { path = "std::net::TcpStream", reason = "pure crate: no network" },
+]

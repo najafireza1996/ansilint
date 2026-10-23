@@ -1,0 +1,36 @@
+name: Rule request
+description: Request a rule, or claim one from the parity table
+title: "rule: "
+labels: ["rule-request"]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: Upstream rule id, e.g. `no-changed-when`.
+    validations:
+      required: true
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream documentation
+      description: Link to https://docs.ansible.com/projects/lint/rules/<id>/
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Verified semantics
+      description: |
+        Summarize the upstream behavior in your own words: triggers, tags,
+        sub-tags, profile, opt-in status and known edge cases. Mark anything
+        unverified.
+  - type: textarea
+    id: fixtures
+    attributes:
+      label: Fixture ideas
+      description: Failing, passing and noqa examples, including blocks, handlers and legacy action forms.
+  - type: checkboxes
+    id: can-implement
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement this rule.

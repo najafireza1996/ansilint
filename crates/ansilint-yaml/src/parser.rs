@@ -9,6 +9,8 @@ use crate::ast::{
 use crate::comments::scan_comments;
 use crate::error::YamlError;
 
+const MAX_DEPTH: usize = 256;
+
 /// Parses every YAML document in `source`.
 ///
 /// # Errors
@@ -60,7 +62,7 @@ fn parse_document<'input>(
             explicit_start,
         });
     }
-    let root = parse_node(text, event, span, parser)?;
+    let root = parse_node(text, event, span, parser, 0)?;
     let (event, end_span) = next_event(parser)?;
     if !matches!(event, Event::DocumentEnd) {
         return Err(YamlError::unexpected(
@@ -91,7 +93,14 @@ fn parse_node<'input>(
     event: Event<'input>,
     span: YamlSpan,
     parser: &mut Parser<'input, StrInput<'input>>,
+    depth: usize,
 ) -> Result<Node, YamlError> {
+    if depth >= MAX_DEPTH {
+        return Err(YamlError {
+            span: to_span(span),
+            message: format!("nesting depth exceeds the supported limit ({MAX_DEPTH})"),
+        });
+    }
     match event {
         Event::Scalar(value, style, anchor, _tag) => {
             Ok(scalar_node(text, value.as_ref(), style, anchor, span))
@@ -100,8 +109,8 @@ fn parse_node<'input>(
             anchor,
             span: to_span(span),
         })),
-        Event::SequenceStart(anchor, _tag) => parse_sequence(text, span, anchor, parser),
-        Event::MappingStart(anchor, _tag) => parse_mapping(text, span, anchor, parser),
+        Event::SequenceStart(anchor, _tag) => parse_sequence(text, span, anchor, parser, depth),
+        Event::MappingStart(anchor, _tag) => parse_mapping(text, span, anchor, parser, depth),
         other => Err(YamlError::unexpected(to_span(span), &format!("{other:?}"))),
     }
 }
@@ -111,6 +120,7 @@ fn parse_sequence<'input>(
     start_span: YamlSpan,
     anchor: usize,
     parser: &mut Parser<'input, StrInput<'input>>,
+    depth: usize,
 ) -> Result<Node, YamlError> {
     let start = to_span(start_span).start;
     let mut items = Vec::new();
@@ -124,7 +134,13 @@ fn parse_sequence<'input>(
                 anchor: anchor_id(anchor),
             }));
         }
-        items.push(parse_node(text, event, span, parser)?);
+        items.push(parse_node(
+            text,
+            event,
+            span,
+            parser,
+            depth.saturating_add(1),
+        )?);
     }
 }
 
@@ -133,6 +149,7 @@ fn parse_mapping<'input>(
     start_span: YamlSpan,
     anchor: usize,
     parser: &mut Parser<'input, StrInput<'input>>,
+    depth: usize,
 ) -> Result<Node, YamlError> {
     let start = to_span(start_span).start;
     let mut entries = Vec::new();
@@ -146,9 +163,9 @@ fn parse_mapping<'input>(
                 anchor: anchor_id(anchor),
             }));
         }
-        let key = parse_node(text, event, key_span, parser)?;
+        let key = parse_node(text, event, key_span, parser, depth.saturating_add(1))?;
         let (event, value_span) = next_event(parser)?;
-        let value = parse_node(text, event, value_span, parser)?;
+        let value = parse_node(text, event, value_span, parser, depth.saturating_add(1))?;
         entries.push(MappingEntry {
             key_span: key.span(),
             value_span: value.span(),
@@ -324,6 +341,14 @@ mod tests {
         assert!(docs[1].explicit_start);
         assert!(docs[0].doc_start.is_some());
         assert!(docs[1].doc_start.is_some());
+    }
+
+    #[test]
+    fn rejects_excessive_nesting_without_overflowing() {
+        let text = format!("{}x\n", "- ".repeat(300));
+        let source = SourceFile::new("deep.yml", text);
+        let error = parse(&source).expect_err("deep nesting is rejected");
+        assert!(error.message.contains("nesting depth"));
     }
 
     #[test]

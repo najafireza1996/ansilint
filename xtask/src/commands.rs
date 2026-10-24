@@ -1,8 +1,10 @@
 //! Implementation of the `cargo xtask` subcommands.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 
@@ -26,6 +28,7 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
         "update-schemas" => generate::update_schemas(),
         "build-index" => generate::build_index(),
         "check-commits" => commits::check_commits(args.get(1..).unwrap_or_default()),
+        "bench" => bench(),
         "help" | "-h" | "--help" => {
             print_help();
             Ok(())
@@ -46,6 +49,7 @@ fn print_help() {
     println!("  update-schemas refresh vendored JSON schemas (Phase 6)");
     println!("  build-index    build the embedded module index (Phase 5)");
     println!("  check-commits  validate Conventional Commits [--range <rev-range>]");
+    println!("  bench          lint a synthetic 500-file repository and print the best time");
 }
 
 fn run_check() -> Result<()> {
@@ -61,6 +65,31 @@ fn run_check() -> Result<()> {
         eprintln!("xtask check: error: {failure}");
     }
     bail!("{} workspace check(s) failed", report.failures.len())
+}
+
+fn bench() -> Result<()> {
+    let directory = tempfile::tempdir().context("create benchmark directory")?;
+    let playbook = "- hosts: all\n  tasks:\n    - name: hello\n      ansible.builtin.debug:\n        msg: hello\n";
+    for index in 0..500 {
+        let path = directory.path().join(format!("play_{index}.yml"));
+        fs::write(&path, playbook)
+            .with_context(|| format!("failed to write {}", path.display()))?;
+    }
+    let mut options = ansilint_engine::LintOptions::new(directory.path());
+    options.paths = vec![directory.path().to_path_buf()];
+    let mut best = Duration::MAX;
+    for run in 0..6 {
+        let start = Instant::now();
+        let result = ansilint_engine::lint(&options)?;
+        let elapsed = start.elapsed();
+        if run == 0 {
+            println!("files linted: {}", result.files_linted);
+        } else {
+            best = best.min(elapsed);
+        }
+    }
+    println!("500-file lint: best of 5 = {} ms", best.as_millis());
+    Ok(())
 }
 
 fn run_ci() -> Result<()> {
@@ -85,15 +114,7 @@ fn run_ci() -> Result<()> {
     run_tool(&["deny", "check"])?;
     run_tool(&["machete"])?;
     // xtask is developer tooling and never shipped, so it is excluded from the gate.
-    run_tool(&[
-        "llvm-cov",
-        "--workspace",
-        "--all-features",
-        "--ignore-filename-regex",
-        "xtask/",
-        "--fail-under-lines",
-        "70",
-    ])?;
+    run_coverage()?;
     println!("xtask ci: ok");
     Ok(())
 }
@@ -106,6 +127,108 @@ fn run_cargo(args: &[&str]) -> Result<()> {
         bail!("`cargo {}` failed", args.join(" "));
     }
     Ok(())
+}
+
+fn run_coverage() -> Result<()> {
+    let output = cargo_command(&[
+        "llvm-cov",
+        "--workspace",
+        "--all-features",
+        "--ignore-filename-regex",
+        "xtask/",
+        "--summary-only",
+    ])
+    .output()
+    .context("failed to run `cargo llvm-cov`")?;
+    print!("{}", String::from_utf8_lossy(&output.stdout));
+    eprint!("{}", String::from_utf8_lossy(&output.stderr));
+    if !output.status.success() {
+        bail!("`cargo llvm-cov` failed");
+    }
+    let summary = String::from_utf8_lossy(&output.stdout);
+    let failures = coverage_failures(&summary);
+    if failures.is_empty() {
+        return Ok(());
+    }
+    for failure in &failures {
+        eprintln!("coverage: {failure}");
+    }
+    bail!("coverage gate failed for {} target(s)", failures.len())
+}
+
+fn coverage_failures(summary: &str) -> Vec<String> {
+    let mut totals: BTreeMap<String, (u64, u64)> = BTreeMap::new();
+    for line in summary.lines() {
+        let Some((crate_name, lines, missed)) = coverage_row(line) else {
+            continue;
+        };
+        let entry = totals.entry(crate_name).or_insert((0, 0));
+        entry.0 = entry.0.saturating_add(lines);
+        entry.1 = entry.1.saturating_add(missed);
+    }
+    let mut failures = Vec::new();
+    let mut overall = (0_u64, 0_u64);
+    for (crate_name, (lines, missed)) in &totals {
+        overall.0 = overall.0.saturating_add(*lines);
+        overall.1 = overall.1.saturating_add(*missed);
+        if *lines == 0 {
+            continue;
+        }
+        let threshold = crate_threshold(crate_name);
+        let Some(percent) = lines
+            .saturating_sub(*missed)
+            .saturating_mul(100)
+            .checked_div(*lines)
+        else {
+            continue;
+        };
+        println!("coverage: {crate_name}: {percent}% (threshold {threshold}%)");
+        if percent < threshold {
+            failures.push(format!(
+                "{crate_name}: {percent}% < {threshold}% ({} of {lines} lines)",
+                lines.saturating_sub(*missed)
+            ));
+        }
+    }
+    let overall_percent = overall
+        .0
+        .saturating_sub(overall.1)
+        .saturating_mul(100)
+        .checked_div(overall.0);
+    if let Some(percent) = overall_percent {
+        if percent < 70 {
+            failures.push(format!("workspace: {percent}% < 70%"));
+        }
+    }
+    failures
+}
+
+fn coverage_row(line: &str) -> Option<(String, u64, u64)> {
+    let fields: Vec<&str> = line.split_whitespace().collect();
+    let path = fields.first()?;
+    let crate_name = path
+        .split('/')
+        .find(|part| part.starts_with("ansilint-"))?
+        .to_string();
+    let lines = fields.get(7)?.parse::<u64>().ok()?;
+    let missed = fields.get(8)?.parse::<u64>().ok()?;
+    Some((crate_name, lines, missed))
+}
+
+fn crate_threshold(crate_name: &str) -> u64 {
+    if matches!(
+        crate_name,
+        "ansilint-core"
+            | "ansilint-yaml"
+            | "ansilint-model"
+            | "ansilint-config"
+            | "ansilint-rules"
+            | "ansilint-fix"
+    ) {
+        85
+    } else {
+        70
+    }
 }
 
 fn run_tool(args: &[&str]) -> Result<()> {
@@ -192,6 +315,10 @@ fn set_executable(path: &Path) -> Result<()> {
 }
 
 #[cfg(not(unix))]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "mirrors the fallible Unix helper so callers are platform-independent"
+)]
 fn set_executable(_path: &Path) -> Result<()> {
     Ok(())
 }

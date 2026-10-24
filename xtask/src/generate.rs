@@ -26,7 +26,7 @@ pub(crate) fn gen_parity() -> Result<()> {
     let target = workspace_root.join("docs/PARITY.md");
     fs::write(&target, output).with_context(|| format!("failed to write {}", target.display()))?;
     println!(
-        "wrote {} ({implemented}/{total} implemented)",
+        "wrote {} ({implemented}/{total} tracked rules implemented)",
         display_relative(&workspace_root, &target)
     );
     Ok(())
@@ -72,7 +72,10 @@ fn render_parity(rows: &[ParityRow], implemented: usize, total: usize) -> String
     );
     let _ = writeln!(
         output,
-        "Implemented: {implemented}/{total} ({percentage}%)\n"
+        "Tracked rules: {implemented}/{total} implemented ({percentage}%)\n"
+    );
+    output.push_str(
+        "This table covers rules tracked in `parity.toml`; the full upstream catalog is added phase by phase.\n\n",
     );
     output.push_str("| Rule | Status | Phase | Notes |\n|---|---|---|---|\n");
     for row in rows {
@@ -115,7 +118,8 @@ pub(crate) fn gen_rule_docs() -> Result<()> {
     } else {
         output.push_str("| Rule | Documentation |\n|---|---|\n");
         for id in &ids {
-            let _ = writeln!(output, "| `{id}` | [{id}]({id}.md) |");
+            let document = id.replace('_', "-");
+            let _ = writeln!(output, "| `{document}` | [{document}]({document}.md) |");
         }
     }
     let target = workspace_root.join("docs/rules/README.md");

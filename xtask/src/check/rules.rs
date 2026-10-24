@@ -88,7 +88,7 @@ fn rule_ids(rules_dir: &Path) -> Result<BTreeSet<String>> {
     for path in walk_files(rules_dir, "rs")? {
         let stem = path.file_stem().and_then(OsStr::to_str).unwrap_or_default();
         if stem != "mod" {
-            ids.insert(stem.to_string());
+            ids.insert(stem.replace('_', "-"));
         }
     }
     Ok(ids)

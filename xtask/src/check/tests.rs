@@ -7,7 +7,7 @@ use std::path::Path;
 use tempfile::TempDir;
 
 use super::dependencies::{check_dependency_edges, check_pure_crates};
-use super::hygiene::{check_forbidden_names, check_markers};
+use super::hygiene::{check_forbidden_names, check_markers, check_panic_strategy};
 use super::load_architecture;
 
 fn write(path: &Path, contents: &str) {
@@ -119,5 +119,20 @@ fn rejects_io_inside_a_pure_crate() {
             .iter()
             .any(|failure| failure.contains("uses `std::fs::`")),
         "expected I/O failure, got {failures:?}"
+    );
+}
+
+#[test]
+fn rejects_panic_abort_profiles() {
+    let temp = workspace();
+    let root = temp.path();
+    write(
+        &root.join("Cargo.toml"),
+        "[workspace]\nresolver = \"2\"\nmembers = []\n\n[profile.release]\npanic = \"abort\"\n",
+    );
+    let failures = check_panic_strategy(root).expect("run panic check");
+    assert!(
+        failures.iter().any(|failure| failure.contains("panic")),
+        "expected panic=abort failure, got {failures:?}"
     );
 }

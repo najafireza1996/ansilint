@@ -9,5 +9,10 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 
+[dependencies]
+ansilint-core = { version = "0.0.0", path = "../ansilint-core" }
+ansilint-yaml = { version = "0.0.0", path = "../ansilint-yaml" }
+thiserror.workspace = true
+
 [lints]
 workspace = true

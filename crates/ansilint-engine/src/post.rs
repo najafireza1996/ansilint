@@ -40,7 +40,7 @@ pub(crate) fn keep(
     if matches_any(&finding.tag, &context.config.skip_list) {
         return false;
     }
-    if !context.config.tags.is_empty() && !matches_any(&finding.tag, &context.config.tags) {
+    if !context.config.tags.is_empty() && !tag_selected(&finding.tag, &context.config.tags) {
         return false;
     }
     if matches_any(&finding.tag, &context.config.warn_list) {
@@ -51,6 +51,20 @@ pub(crate) fn keep(
 
 fn matches_any(tag: &Tag, patterns: &[String]) -> bool {
     patterns.iter().any(|pattern| tag.matches(pattern))
+}
+
+fn tag_selected(tag: &Tag, patterns: &[String]) -> bool {
+    if matches_any(tag, patterns) {
+        return true;
+    }
+    ansilint_rules::all().iter().any(|rule| {
+        let meta = rule.meta();
+        meta.id == tag.rule
+            && meta
+                .tags
+                .iter()
+                .any(|meta_tag| patterns.iter().any(|pattern| pattern == meta_tag))
+    })
 }
 
 fn noqa_matches(line: &str, tag: &Tag) -> bool {
@@ -200,6 +214,22 @@ mod tests {
         );
         assert!(keep(&mut downgraded, None, &context));
         assert_eq!(downgraded.severity, Severity::Warning);
+    }
+
+    #[test]
+    fn tags_select_by_rule_metadata() {
+        let config = Config {
+            tags: vec!["syntax".to_string()],
+            ..Config::default()
+        };
+        let context = PostContext {
+            config: &config,
+            ignore: None,
+        };
+        let mut parser_error = finding("parser-error", Severity::Error);
+        assert!(keep(&mut parser_error, None, &context));
+        let mut warning = finding("warning", Severity::Warning);
+        assert!(!keep(&mut warning, None, &context));
     }
 
     #[test]

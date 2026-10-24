@@ -153,3 +153,75 @@ fn ignore_file_matches_nested_paths() {
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
 }
+
+#[test]
+fn does_not_treat_generic_yaml_lists_as_tasks() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("data.yml"), "- foo: 1\n  bar: 2\n");
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}
+
+#[test]
+fn model_issues_are_not_surfaced_as_warnings() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("roles/x/tasks/main.yml"),
+        "- name: bad\n  ansible.builtin.copy: {src: a}\n  ansible.builtin.file: {path: b}\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}
+
+#[test]
+fn excludes_the_default_cache_directory() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(&directory.path().join(".cache/bad.yml"), "a: [1,\n");
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.files_linted, 1);
+}
+
+#[test]
+fn strips_a_bom_from_configuration_and_ignore_files() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "\u{feff}exclude_paths: []\n",
+    );
+    write(
+        &directory.path().join(".ansible-lint-ignore"),
+        "\u{feff}site.yml warning skip\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}
+
+#[test]
+fn discovers_ignore_file_next_to_a_dot_config_directory() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".config/ansible-lint.yml"),
+        "exclude_paths: []\n",
+    );
+    write(
+        &directory.path().join(".config/ansible-lint-ignore.txt"),
+        "site.yml warning skip\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}
+
+#[test]
+fn can_disable_default_rules() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "use_default_rules: false\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}

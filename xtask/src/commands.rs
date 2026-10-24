@@ -315,6 +315,10 @@ fn set_executable(path: &Path) -> Result<()> {
 }
 
 #[cfg(not(unix))]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "mirrors the fallible Unix helper so callers are platform-independent"
+)]
 fn set_executable(_path: &Path) -> Result<()> {
     Ok(())
 }

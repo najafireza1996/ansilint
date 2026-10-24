@@ -78,6 +78,11 @@ Libraries return typed errors (`thiserror`); binaries may use `anyhow`.
 a `load-failure` or `parser-error` finding; a rule failure must produce
 `internal-error`. Neither may abort the run.
 
+`internal-error` depends on `std::panic::catch_unwind`, so the workspace must use
+unwinding. Setting `panic = "abort"` in any profile would silently disable panic
+isolation. `cargo xtask check` rejects it, and the rules runner has a runtime
+assertion for the test profile.
+
 ## Configuration
 
 Configuration is parsed once at the boundary into typed values and passed down

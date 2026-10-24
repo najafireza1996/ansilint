@@ -21,6 +21,32 @@ const SMELL: &str = concat!("HA", "CK");
 const IGNORE_ATTR: &str = concat!("#[ign", "ore");
 const GENERATED: &str = concat!("@", "generated");
 
+/// Fails when a profile disables unwinding, which would break `internal-error`.
+pub(super) fn check_panic_strategy(root: &Path) -> Result<Vec<String>> {
+    let mut failures = Vec::new();
+    for path in walk_files(root, "toml")? {
+        if path.file_name().is_none_or(|name| name != "Cargo.toml") {
+            continue;
+        }
+        let text = fs::read_to_string(&path)
+            .with_context(|| format!("failed to read {}", path.display()))?;
+        for (index, line) in text.lines().enumerate() {
+            let compact: String = line
+                .chars()
+                .filter(|character| !character.is_whitespace())
+                .collect();
+            if compact.starts_with("panic=\"abort\"") {
+                failures.push(format!(
+                    "{}:{}: `panic = \"abort\"` disables catch_unwind and internal-error",
+                    display_path(root, &path),
+                    index + 1
+                ));
+            }
+        }
+    }
+    Ok(failures)
+}
+
 pub(super) fn check_forbidden_names(root: &Path) -> Result<Vec<String>> {
     let mut failures = Vec::new();
     for base in ["crates", "xtask", "benches", "fuzz"] {

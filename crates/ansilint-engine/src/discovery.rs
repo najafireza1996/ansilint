@@ -284,7 +284,9 @@ pub(crate) fn relative_output_path(root: &Path, path: &Path) -> PathBuf {
 mod tests {
     use ansilint_model::FileKind;
 
-    use super::{default_patterns, find_git_root, Classifier};
+    use super::{
+        default_patterns, find_git_root, has_yaml_extension, relative_output_path, Classifier,
+    };
 
     #[test]
     fn defaults_are_ordered_from_specific_to_generic() {
@@ -315,5 +317,33 @@ mod tests {
     fn finds_no_git_root_in_a_temp_directory() {
         let directory = tempfile::tempdir().expect("temp dir");
         assert!(find_git_root(directory.path()).is_none());
+    }
+
+    #[test]
+    fn yaml_extensions_are_case_insensitive() {
+        assert!(has_yaml_extension(std::path::Path::new("a.yml")));
+        assert!(has_yaml_extension(std::path::Path::new("a.YML")));
+        assert!(has_yaml_extension(std::path::Path::new("a.Yaml")));
+        assert!(!has_yaml_extension(std::path::Path::new("a.txt")));
+    }
+
+    #[test]
+    fn directory_patterns_are_case_sensitive() {
+        let classifier = Classifier::new(&[]);
+        let root = std::path::Path::new("/project");
+        assert_eq!(
+            classifier.classify(root, &root.join("roles/x/Tasks/main.yml")),
+            FileKind::Yaml
+        );
+    }
+
+    #[test]
+    fn output_paths_use_forward_slashes() {
+        let root = std::path::Path::new("/project");
+        let path = std::path::Path::new("/project/roles\\x\\tasks\\main.yml");
+        assert_eq!(
+            relative_output_path(root, path),
+            std::path::PathBuf::from("roles/x/tasks/main.yml")
+        );
     }
 }

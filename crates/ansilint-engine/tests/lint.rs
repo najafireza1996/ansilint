@@ -131,3 +131,25 @@ fn discovers_configuration_in_a_parent_directory() {
     );
     assert!(!result.has_fatal(false));
 }
+
+#[test]
+fn handles_uppercase_extensions_by_sniffing() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("SITE.YML"), "- hosts: all\n");
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.files_linted, 1);
+    assert_eq!(result.findings.len(), 1);
+    assert_eq!(result.findings[0].finding.tag.rule, "warning");
+}
+
+#[test]
+fn ignore_file_matches_nested_paths() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("sub/site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint-ignore"),
+        "sub/site.yml warning skip\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}

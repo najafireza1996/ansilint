@@ -14,10 +14,14 @@ name = "ansilint"
 path = "src/main.rs"
 
 [dependencies]
+anyhow.workspace = true
+ansilint-engine = { version = "0.0.0", path = "../ansilint-engine" }
+ansilint-output = { version = "0.0.0", path = "../ansilint-output" }
 clap.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
+tempfile.workspace = true
 predicates.workspace = true
 
 [lints]

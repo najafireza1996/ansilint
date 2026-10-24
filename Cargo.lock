@@ -15,9 +15,13 @@ dependencies = [
 name = "ansilint-cli"
 version = "0.0.0"
 dependencies = [
+ "ansilint-engine",
+ "ansilint-output",
+ "anyhow",
  "assert_cmd",
  "clap",
  "predicates",
+ "tempfile",
 ]
 
 [[package]]

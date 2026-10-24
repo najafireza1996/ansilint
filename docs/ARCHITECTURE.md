@@ -78,6 +78,11 @@ Libraries return typed errors (`thiserror`); binaries may use `anyhow`.
 a `load-failure` or `parser-error` finding; a rule failure must produce
 `internal-error`. Neither may abort the run.
 
+`internal-error` depends on `std::panic::catch_unwind`, so the workspace must use
+unwinding. Setting `panic = "abort"` in any profile would silently disable panic
+isolation. `cargo xtask check` rejects it, and the rules runner has a runtime
+assertion for the test profile.
+
 ## Configuration
 
 Configuration is parsed once at the boundary into typed values and passed down
@@ -99,9 +104,19 @@ The MSRV decision is recorded here per P0-T2. Changing it requires an ADR (ENG-4
 ## File-kind detection
 
 `FileKind` detection is an ordered list of `(kind, glob)` rules; the first match
-wins and user `kinds:` entries are prepended. The default upstream pattern list
-and its precedence are marked `VERIFY-UPSTREAM` and will be recorded here during
-Phase 1 (P1-T4). Content sniffing is only a fallback.
+wins and user `kinds:` entries are prepended. Phase 1 implements defaults for
+`meta/main.yml`, `meta/runtime.yml`, `meta/argument_specs.yml`, `galaxy.yml`,
+`requirements.yml`, Molecule, execution environments, `tasks/`, `handlers/`,
+`defaults/`, `vars/`, `group_vars/` and `host_vars/`, followed by a generic YAML
+fallback. Content sniffing promotes a generic file to a playbook when the first
+list item has `hosts`, or to tasks when it has a non-keyword action key. The exact
+upstream pattern list and precedence remain `VERIFY-UPSTREAM` (OPEN_QUESTIONS #3).
+
+## YAML parser
+
+`ansilint-yaml` consumes events from `saphyr-parser` 0.2.2 and builds its own AST.
+The decision, the spike evidence and the span-normalization rules are in
+[ADR 0001](adr/0001-yaml-parser.md).
 
 ## Further reading
 

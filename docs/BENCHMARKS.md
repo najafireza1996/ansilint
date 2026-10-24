@@ -19,8 +19,28 @@ repository. Hand-typed numbers are noise.
   4. with and without the embedded index;
   5. `--fix --diff` (Phase 8).
 
+## Phase 1 baseline
+
+Date: 2026-10-23. Source: `cargo xtask bench` (library API, not CLI process
+startup). Each run lints a freshly generated directory of 500 small playbooks.
+
+This is a **baseline**, not a product claim: it uses four simple synthetic rules
+on identical files. Expect it to grow as real rules, schemas and index lookups
+are added. It is deliberately not quoted in the README.
+
+| Machine | OS | Rust | Files | Best of 5 |
+|---|---|---|---|---|
+| Apple M1, 8 GiB | macOS 26.5 (arm64) | 1.99.1 | 500 | **12–13 ms** |
+
+The 100 ms Phase 1 target has a wide margin on this machine. The number is
+library-only; CLI startup and CI hardware measurements are added by the Phase 4
+harness. Reproduce with `cargo xtask bench`.
+
+Determinism: output was byte-identical with `RAYON_NUM_THREADS=1` and the default
+thread pool on a 40-file fixture (20 warnings, 20 parser errors) in both `pep8`
+and `json` formats.
+
 ## Current status
 
-Phase 0: no benchmark harness or numbers yet. The harness lands in Phase 4 (P4-T5),
-with per-phase numbers recorded here as later phases land. Before then, local
-numbers are not comparable and must not be quoted in the README.
+The end-to-end `hyperfine` harness lands in Phase 4 (P4-T5). Until then, treat
+local numbers as directional and do not quote them in the README.

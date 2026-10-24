@@ -1,7 +1,7 @@
 # Configuration
 
-Status: **pre-alpha**. Config discovery and parsing land in Phase 1 (P1-T3). The
-keys and merge semantics below mirror upstream; each one is verified against the
+Status: **pre-alpha**. Phase 1 implements discovery, typed parsing and merge
+semantics. The keys and merge semantics below mirror upstream; each one is verified against the
 official docs before implementation and recorded in
 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
@@ -41,4 +41,14 @@ Unknown keys are validated against the vendored `ansible-lint-config` schema
   `--exclude` is relative to the current directory.
 - When `exclude_paths` is absent, `.cache/` is excluded by default.
 
-Every bullet is `VERIFY-UPSTREAM` until a test pins it.
+Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
+"lists extend / scalars override", unknown and ignored keys, and the ignore-file
+grammar.
+
+## Ignore file
+
+Discovery order: `ANSIBLE_LINT_IGNORE_FILE`, then `.ansible-lint-ignore` and
+`.config/ansible-lint-ignore.txt` next to the configuration (or project root).
+Each line is `<path> <tag> [skip]`; a trailing `# comment` is ignored. Without
+`skip` the finding is downgraded to a warning. `--generate-ignore` rewrites the
+file from the current findings.

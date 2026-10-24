@@ -1,8 +1,9 @@
 # CLI
 
-Status: **pre-alpha**. Phase 0 implements `--version` and `--help`. Flags are
-added in Phase 1 (P1-T10); this page documents the target contract so flag names
-do not drift.
+Status: **pre-alpha**. Phase 1 implements the lint pipeline and the flags marked
+"implemented" below. Later phases add fixes, sarif, the language server and
+completions. The rest of this page documents the target contract so flag names do
+not drift.
 
 ## Invocation
 
@@ -29,7 +30,7 @@ root.
   -f, --format <FORMAT>          pep8 | plain | rich | json | codeclimate | quiet | sarif | github
       --sarif-file <FILE>        Also write SARIF to this file
       --nocolor / --force-color  Control ANSI colors
-      --fix[=<all|none|RULES>]   Apply safe fixes (Phase 8)
+      --fix[=<all|none|RULES>]   Apply safe fixes (Phase 8, not yet)
       --diff                     Print fixes as a unified diff without writing
       --generate-ignore          Rewrite the ignore file from current findings
   -L, --list-rules               List rules
@@ -49,9 +50,20 @@ ansilint lsp                                                                    
 ansilint completions <shell>                                                          Phase 4
 ```
 
+## Implemented in Phase 1
+
+`-c`, `-p`, `-x`, `-w`, `--enable-list`, `--exclude`, `--strict`, `-q`, `-v`,
+`-f` (`pep8`, `json`, `quiet`), `-L`, `-T`, `-P`, `--generate-ignore`,
+`--nocolor`, `--offline`, `--version` and `--help`.
+
+`-L` prints `id profile summary`; `-T` prints sorted tags; `-P` prints profiles in
+cumulative order. These layouts are not yet byte-compatible with upstream and are
+marked `VERIFY-UPSTREAM` (OPEN_QUESTIONS #2/#5).
+
 ## Exit codes
 
-Working assumption until verified upstream (see [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)):
+Implemented in Phase 1, still to be verified byte-for-byte against upstream (see
+[OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)):
 
 | Code | Meaning |
 |---|---|

@@ -19,10 +19,14 @@ repository. Hand-typed numbers are noise.
   4. with and without the embedded index;
   5. `--fix --diff` (Phase 8).
 
-## Phase 1 results
+## Phase 1 baseline
 
 Date: 2026-10-23. Source: `cargo xtask bench` (library API, not CLI process
 startup). Each run lints a freshly generated directory of 500 small playbooks.
+
+This is a **baseline**, not a product claim: it uses four simple synthetic rules
+on identical files. Expect it to grow as real rules, schemas and index lookups
+are added. It is deliberately not quoted in the README.
 
 | Machine | OS | Rust | Files | Best of 5 |
 |---|---|---|---|---|

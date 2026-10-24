@@ -6,6 +6,7 @@
 
 /// Keys that are task keywords, not module names. Sorted.
 pub const TASK_KEYWORDS: &[&str] = &[
+    "any_errors_fatal",
     "args",
     "async",
     "become",

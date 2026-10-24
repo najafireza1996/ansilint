@@ -244,3 +244,69 @@ impl Document {
             .filter(move |comment| comment.line == line)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ansilint_core::Span;
+
+    use super::{Alias, Comment, Mapping, Node, Scalar, ScalarStyle, Sequence, SourceFile};
+
+    fn span() -> Span {
+        Span::new(0, 1)
+    }
+
+    #[test]
+    fn node_accessors_are_total() {
+        let scalar = Node::Scalar(Scalar {
+            value: "x".to_string(),
+            style: ScalarStyle::Plain,
+            span: span(),
+            anchor: None,
+        });
+        assert_eq!(scalar.as_str(), Some("x"));
+        assert!(scalar.as_sequence().is_none());
+        assert!(scalar.as_mapping().is_none());
+        assert!(scalar.as_alias().is_none());
+        assert!(!scalar.is_null());
+        let sequence = Node::Sequence(Sequence {
+            items: Vec::new(),
+            span: span(),
+            anchor: None,
+        });
+        assert!(sequence.as_sequence().is_some());
+        let mapping = Node::Mapping(Mapping {
+            entries: Vec::new(),
+            span: span(),
+            anchor: None,
+        });
+        assert!(mapping.as_mapping().is_some());
+        let alias = Node::Alias(Alias {
+            anchor: 1,
+            span: span(),
+        });
+        assert!(alias.as_alias().is_some());
+        assert_eq!(alias.span(), span());
+        assert!(Node::Null { span: span() }.is_null());
+    }
+
+    #[test]
+    fn source_files_expose_text_and_comments() {
+        let source = SourceFile::new("a.yml", "a: 1\n# note\n");
+        assert_eq!(source.as_str(), "a: 1\n# note\n");
+        let comment = Comment {
+            span: span(),
+            text: "# note".to_string(),
+            line: 1,
+        };
+        assert_eq!(comment.content(), "note");
+        let document = super::Document {
+            root: Node::Null { span: span() },
+            comments: vec![comment],
+            doc_start: None,
+            doc_end: None,
+            explicit_start: false,
+        };
+        assert_eq!(document.comments_on_line(1).count(), 1);
+        assert_eq!(document.comments_on_line(0).count(), 0);
+    }
+}

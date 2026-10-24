@@ -144,3 +144,62 @@ mod tests {
         assert!(findings[0].message.contains("test-panic"));
     }
 }
+
+#[cfg(test)]
+mod string_payload_tests {
+    #![allow(
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        reason = "tests use fixed fixtures and panic on broken assertions"
+    )]
+
+    use ansilint_config::Config;
+    use ansilint_model::FileKind;
+    use ansilint_yaml::SourceFile;
+
+    use super::run;
+    use crate::rule::{FileCx, Rule};
+    use crate::{RuleMeta, Tier};
+
+    struct StringPanicRule;
+
+    static STRING_PANIC_META: RuleMeta = RuleMeta {
+        id: "test-string-panic",
+        summary: "panics with a String on purpose",
+        tags: &[],
+        profile: ansilint_config::Profile::Min,
+        opt_in: false,
+        tier: Tier::Static,
+        fixable: false,
+        applies_to: &[],
+    };
+
+    impl Rule for StringPanicRule {
+        fn meta(&self) -> &'static RuleMeta {
+            &STRING_PANIC_META
+        }
+
+        fn check_file(&self, _cx: &FileCx<'_>, _out: &mut Vec<ansilint_core::Finding>) {
+            std::panic::panic_any(String::from("boom"));
+        }
+    }
+
+    #[test]
+    fn extracts_string_panic_payloads() {
+        let source = SourceFile::new("a.yml", "a: 1\n");
+        let documents = ansilint_yaml::parse(&source).expect("valid YAML");
+        let built = ansilint_model::build(&documents, FileKind::Yaml);
+        let config = Config::default();
+        let cx = FileCx {
+            source: &source,
+            documents: &documents,
+            kind: FileKind::Yaml,
+            built: &built,
+            config: &config,
+        };
+        let findings = run(&[&StringPanicRule], &cx);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].message.contains("boom"));
+    }
+}

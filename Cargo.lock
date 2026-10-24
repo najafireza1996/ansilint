@@ -71,6 +71,13 @@ version = "0.0.0"
 [[package]]
 name = "ansilint-rules"
 version = "0.0.0"
+dependencies = [
+ "ansilint-config",
+ "ansilint-core",
+ "ansilint-model",
+ "ansilint-testing",
+ "ansilint-yaml",
+]
 
 [[package]]
 name = "ansilint-schema"

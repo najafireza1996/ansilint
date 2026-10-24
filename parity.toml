@@ -2,4 +2,26 @@
 # status: implemented | partial | planned | not-planned
 # Regenerate docs/PARITY.md with `cargo xtask gen-parity`.
 
-[rules]
+[rules.internal-error]
+status = "implemented"
+phase = 1
+upstream_tags = ["internal"]
+notes = "Emitted by the runner when a rule panics; never aborts the run."
+
+[rules.load-failure]
+status = "implemented"
+phase = 1
+upstream_tags = ["syntax"]
+notes = "Unreadable, non-UTF-8 or oversized files."
+
+[rules.parser-error]
+status = "implemented"
+phase = 1
+upstream_tags = ["syntax"]
+notes = "YAML syntax errors with the scanner's exact span."
+
+[rules.warning]
+status = "implemented"
+phase = 1
+upstream_tags = ["warning"]
+notes = "Meta-rule for non-fatal notices; empty playbooks in Phase 1."

@@ -2,3 +2,18 @@
 //!
 //! It must not: perform I/O or mutate the model it inspects.
 #![forbid(unsafe_code)]
+
+#[cfg(panic = "abort")]
+compile_error!("ansilint requires panic=unwind; internal-error uses catch_unwind");
+
+mod meta;
+mod registry;
+mod rule;
+mod rules;
+mod runner;
+
+pub use meta::{RuleMeta, Tier};
+pub use registry::all;
+pub use rule::{FileCx, Rule};
+pub use rules::{InternalErrorRule, LoadFailureRule, ParserErrorRule, WarningRule};
+pub use runner::run;

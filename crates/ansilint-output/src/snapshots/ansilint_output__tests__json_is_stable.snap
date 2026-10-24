@@ -1,0 +1,5 @@
+---
+source: crates/ansilint-output/src/lib.rs
+expression: out
+---
+[{"column":5,"line":3,"message":"bad yaml","path":"playbooks/site.yml","severity":"error","tag":"parser-error"}]

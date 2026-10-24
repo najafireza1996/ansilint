@@ -25,9 +25,6 @@ const GENERATED: &str = concat!("@", "generated");
 pub(super) fn check_panic_strategy(root: &Path) -> Result<Vec<String>> {
     let mut failures = Vec::new();
     for path in walk_files(root, "toml")? {
-        if path.file_name().is_none_or(|name| name != "Cargo.toml") {
-            continue;
-        }
         let text = fs::read_to_string(&path)
             .with_context(|| format!("failed to read {}", path.display()))?;
         for (index, line) in text.lines().enumerate() {
@@ -35,7 +32,10 @@ pub(super) fn check_panic_strategy(root: &Path) -> Result<Vec<String>> {
                 .chars()
                 .filter(|character| !character.is_whitespace())
                 .collect();
-            if compact.starts_with("panic=\"abort\"") {
+            if compact.contains("panic=\"abort\"")
+                || compact.contains("panic='abort'")
+                || compact.contains("panic=abort")
+            {
                 failures.push(format!(
                     "{}:{}: `panic = \"abort\"` disables catch_unwind and internal-error",
                     display_path(root, &path),

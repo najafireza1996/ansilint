@@ -2,6 +2,7 @@
 
 /// The kind of Ansible content a file holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum FileKind {
     /// A playbook, usually a list of plays.
     Playbook,

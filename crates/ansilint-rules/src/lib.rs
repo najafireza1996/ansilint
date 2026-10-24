@@ -3,6 +3,9 @@
 //! It must not: perform I/O or mutate the model it inspects.
 #![forbid(unsafe_code)]
 
+#[cfg(panic = "abort")]
+compile_error!("ansilint requires panic=unwind; internal-error uses catch_unwind");
+
 mod meta;
 mod registry;
 mod rule;

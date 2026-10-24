@@ -12,6 +12,7 @@ use thiserror::Error;
 
 /// Formats implemented in Phase 1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Format {
     /// `path:line: tag: message`
     Pep8,

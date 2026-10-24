@@ -5,6 +5,7 @@ use ansilint_model::FileKind;
 
 /// What a rule needs to run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Tier {
     /// Pure YAML/text.
     Static,

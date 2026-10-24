@@ -34,6 +34,6 @@ accounts before the first public release (OPEN_QUESTIONS #12).
 
 ## Supply chain
 
-Third-party Actions are pinned to released major tags in Phase 0 and must be
-pinned to commit SHAs before the first public release (OPEN_QUESTIONS #13).
+Third-party Actions are pinned to commit SHAs (OPEN_QUESTIONS #13). Review the
+pins on every dependency update.
 `cargo deny` and `cargo audit` run in CI.

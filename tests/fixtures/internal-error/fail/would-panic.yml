@@ -1,0 +1,2 @@
+# A test rule panics on this input; the runner converts it to internal-error.
+a: 1

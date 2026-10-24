@@ -5,3 +5,8 @@
 /.vscode/
 /tests/compat/*
 !/tests/compat/README.md
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/coverage/
+/fuzz/corpus/yaml_parse/*
+!/fuzz/corpus/yaml_parse/seed.yml

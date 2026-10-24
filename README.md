@@ -23,8 +23,8 @@ ships its own module index and schemas.
 
 | Phase | Deliverable | State |
 |---|---|---|
-| 0 | Workspace, tooling, CI, fitness functions | in progress |
-| 1 | Core engine and CLI skeleton (`min` profile) | planned |
+| 0 | Workspace, tooling, CI, fitness functions | done |
+| 1 | Core engine and CLI skeleton (`min` profile) | implemented, pending release |
 | 2 | Text/format rules (`yaml`, `name`, …) | planned |
 | 3 | Static semantic rules and profiles | planned |
 | 4 | Outputs, integrations, `v0.1.0` | planned |

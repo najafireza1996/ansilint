@@ -1,0 +1,1 @@
+a: [1,  # noqa: parser-error (parser errors are not skippable)

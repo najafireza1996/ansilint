@@ -1,0 +1,6 @@
+---
+source: crates/ansilint-output/src/lib.rs
+expression: out
+---
+playbooks/site.yml:3: parser-error: bad yaml
+playbooks/site.yml:7: yaml[truthy]: use true

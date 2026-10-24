@@ -29,3 +29,6 @@ jobs:
       - name: Fuzz the YAML parser for five minutes
         working-directory: fuzz
         run: cargo fuzz run yaml_parse -- -max_total_time=300
+      - name: Fuzz the model builder for five minutes
+        working-directory: fuzz
+        run: cargo fuzz run model -- -max_total_time=300

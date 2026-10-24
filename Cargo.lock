@@ -98,6 +98,7 @@ dependencies = [
  "ansilint-config",
  "ansilint-core",
  "ansilint-model",
+ "ansilint-testing",
  "ansilint-yaml",
 ]
 

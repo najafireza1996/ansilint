@@ -20,6 +20,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # stable
         with:
           toolchain: nightly
+          components: rust-src
       - uses: Swatinem/rust-cache@e9d7b9f1e587218970671bac74e5511ed9506e6a # v2
         with:
           workspaces: fuzz
@@ -28,7 +29,7 @@ jobs:
           tool: cargo-fuzz
       - name: Fuzz the YAML parser for five minutes
         working-directory: fuzz
-        run: cargo +nightly fuzz run yaml_parse -- -max_total_time=300
+        run: cargo +nightly fuzz run --target x86_64-unknown-linux-gnu yaml_parse -- -max_total_time=300
       - name: Fuzz the model builder for five minutes
         working-directory: fuzz
-        run: cargo +nightly fuzz run model -- -max_total_time=300
+        run: cargo +nightly fuzz run --target x86_64-unknown-linux-gnu model -- -max_total_time=300

@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use ansilint_config::{Config, KindPattern, CONFIG_FILE_NAMES};
-use ansilint_model::{is_task_keyword, FileKind};
+use ansilint_model::FileKind;
 use ansilint_yaml::{Document, Node};
 use globset::{Glob, GlobMatcher};
 use ignore::WalkBuilder;
@@ -40,7 +40,13 @@ pub(crate) fn discover_project(cwd: &Path, explicit_config: Option<&Path>) -> Pr
     let git_root = find_git_root(cwd);
     let root = git_root.clone().unwrap_or_else(|| cwd.to_path_buf());
     let config_path = explicit_config
-        .map(Path::to_path_buf)
+        .map(|path| {
+            if path.is_relative() {
+                cwd.join(path)
+            } else {
+                path.to_path_buf()
+            }
+        })
         .or_else(|| find_config(cwd, git_root.as_deref()));
     let config_base = config_path
         .as_ref()
@@ -89,6 +95,7 @@ impl ExcludeSet {
         let mut set = Self::default();
         set.add_prefix(cwd.join(".git"));
         set.add_prefix(cwd.join("target"));
+        set.add_prefix(cwd.join(".cache"));
         for path in &config.exclude_paths {
             set.add(config_base, path);
         }
@@ -244,33 +251,27 @@ fn default_patterns() -> &'static [(FileKind, &'static str)] {
 }
 
 /// Improves a path-only classification by sniffing the parsed content.
+///
+/// Phase 1 only promotes playbooks (a top-level list item with `hosts`). It
+/// deliberately does not infer task files from arbitrary YAML lists, because
+/// that would lint unrelated YAML as Ansible content and create false positives.
 #[must_use]
 pub(crate) fn sniff(kind: FileKind, documents: &[Document]) -> FileKind {
     if !matches!(kind, FileKind::Yaml | FileKind::Unknown) {
         return kind;
     }
-    let Some(root) = documents.first().map(|document| &document.root) else {
-        return kind;
-    };
-    let Some(sequence) = root.as_sequence() else {
-        return kind;
-    };
-    let Some(first) = sequence.items.first().and_then(Node::as_mapping) else {
-        return kind;
-    };
-    if first.get("hosts").is_some() {
-        return FileKind::Playbook;
+    for document in documents {
+        let Some(sequence) = document.root.as_sequence() else {
+            continue;
+        };
+        let Some(first) = sequence.items.first().and_then(Node::as_mapping) else {
+            continue;
+        };
+        if first.get("hosts").is_some() {
+            return FileKind::Playbook;
+        }
     }
-    let has_action = first.entries.iter().any(|entry| {
-        entry.key.as_str().is_some_and(|key| {
-            !is_task_keyword(key) && !matches!(key, "block" | "rescue" | "always")
-        })
-    });
-    if has_action {
-        FileKind::Tasks
-    } else {
-        kind
-    }
+    kind
 }
 
 /// Makes a path relative to the project root, using forward slashes.
@@ -284,7 +285,9 @@ pub(crate) fn relative_output_path(root: &Path, path: &Path) -> PathBuf {
 mod tests {
     use ansilint_model::FileKind;
 
-    use super::{default_patterns, find_git_root, Classifier};
+    use super::{
+        default_patterns, find_git_root, has_yaml_extension, relative_output_path, Classifier,
+    };
 
     #[test]
     fn defaults_are_ordered_from_specific_to_generic() {
@@ -315,5 +318,33 @@ mod tests {
     fn finds_no_git_root_in_a_temp_directory() {
         let directory = tempfile::tempdir().expect("temp dir");
         assert!(find_git_root(directory.path()).is_none());
+    }
+
+    #[test]
+    fn yaml_extensions_are_case_insensitive() {
+        assert!(has_yaml_extension(std::path::Path::new("a.yml")));
+        assert!(has_yaml_extension(std::path::Path::new("a.YML")));
+        assert!(has_yaml_extension(std::path::Path::new("a.Yaml")));
+        assert!(!has_yaml_extension(std::path::Path::new("a.txt")));
+    }
+
+    #[test]
+    fn directory_patterns_are_case_sensitive() {
+        let classifier = Classifier::new(&[]);
+        let root = std::path::Path::new("/project");
+        assert_eq!(
+            classifier.classify(root, &root.join("roles/x/Tasks/main.yml")),
+            FileKind::Yaml
+        );
+    }
+
+    #[test]
+    fn output_paths_use_forward_slashes() {
+        let root = std::path::Path::new("/project");
+        let path = std::path::Path::new("/project/roles\\x\\tasks\\main.yml");
+        assert_eq!(
+            relative_output_path(root, path),
+            std::path::PathBuf::from("roles/x/tasks/main.yml")
+        );
     }
 }

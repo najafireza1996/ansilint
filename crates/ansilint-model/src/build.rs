@@ -10,6 +10,8 @@ use crate::model::{
 };
 use crate::FileKind;
 
+const MAX_BLOCK_DEPTH: u32 = 128;
+
 /// Builds a model. Malformed constructs become [`ModelIssue`]s, never errors.
 #[must_use]
 pub fn build(documents: &[Document], kind: FileKind) -> BuiltModel {
@@ -40,34 +42,42 @@ impl Builder {
     }
 
     fn playbook(&mut self, documents: &[Document]) -> FileModel {
-        let Some(document) = documents.first() else {
-            return FileModel::Playbook(Vec::new());
-        };
-        let Some(sequence) = document.root.as_sequence() else {
-            self.issue(
-                document.root.span(),
-                "a playbook must be a sequence of plays",
-            );
-            return FileModel::Playbook(Vec::new());
-        };
         let mut plays = Vec::new();
-        for (index, node) in sequence.items.iter().enumerate() {
-            if let Some(play) = self.play(node, index) {
-                plays.push(play);
+        let mut play_index = 0_usize;
+        for document in documents {
+            if document.root.is_null() {
+                continue;
+            }
+            let Some(sequence) = document.root.as_sequence() else {
+                self.issue(
+                    document.root.span(),
+                    "a playbook must be a sequence of plays",
+                );
+                continue;
+            };
+            for node in &sequence.items {
+                if let Some(play) = self.play(node, play_index) {
+                    plays.push(play);
+                    play_index = play_index.saturating_add(1);
+                }
             }
         }
         FileModel::Playbook(plays)
     }
 
     fn task_file(&mut self, documents: &[Document], in_handler: bool) -> Vec<TaskItem> {
-        let Some(document) = documents.first() else {
-            return Vec::new();
-        };
         let ctx = TaskCtx {
             in_handler,
             ..TaskCtx::default()
         };
-        self.task_list(Some(&document.root), &ctx)
+        let mut items = Vec::new();
+        for document in documents {
+            if document.root.is_null() {
+                continue;
+            }
+            items.extend(self.task_list(Some(&document.root), &ctx));
+        }
+        items
     }
 
     fn play(&mut self, node: &Node, index: usize) -> Option<Play> {
@@ -158,6 +168,9 @@ impl Builder {
     }
 
     fn task_item(&mut self, node: &Node, ctx: &TaskCtx) -> Option<TaskItem> {
+        if node.as_alias().is_some() {
+            return None;
+        }
         let Some(mapping) = node.as_mapping() else {
             self.issue(node.span(), "a task list item must be a mapping");
             return None;
@@ -174,6 +187,16 @@ impl Builder {
     }
 
     fn block(&mut self, node: &Node, mapping: &Mapping, ctx: &TaskCtx) -> Block {
+        if ctx.block_depth >= MAX_BLOCK_DEPTH {
+            self.issue(node.span(), "block nesting exceeds the supported depth");
+            return Block {
+                span: node.span(),
+                block: Vec::new(),
+                rescue: Vec::new(),
+                always: Vec::new(),
+                keys: KeyMap::default(),
+            };
+        }
         let keys = self.key_map(mapping, &["block", "rescue", "always"]);
         let mut child = ctx.clone();
         child.block_depth = child.block_depth.saturating_add(1);
@@ -220,7 +243,7 @@ impl Builder {
             let Some(key) = entry.key.as_str() else {
                 continue;
             };
-            if is_task_keyword(key) {
+            if key == "<<" || is_task_keyword(key) {
                 continue;
             }
             count = count.saturating_add(1);
@@ -241,7 +264,7 @@ impl Builder {
         let (requested, free_form, args) = if legacy {
             self.legacy_action(&entry.value)?
         } else {
-            let (_ignored, free_form, args) = self.plain_action(&entry.value);
+            let (_ignored, free_form, args) = Self::plain_action(&entry.value);
             (key.to_string(), free_form, args)
         };
         Some(Action {
@@ -256,19 +279,17 @@ impl Builder {
         })
     }
 
-    fn plain_action(&mut self, value: &Node) -> (String, Option<Spanned<String>>, Option<Node>) {
+    fn plain_action(value: &Node) -> (String, Option<Spanned<String>>, Option<Node>) {
         match value {
             Node::Scalar(scalar) => (
                 String::new(),
                 Some(Spanned::new(scalar.value.clone(), scalar.span)),
                 None,
             ),
-            Node::Mapping(_) | Node::Sequence(_) => (String::new(), None, Some(value.clone())),
-            Node::Null { .. } => (String::new(), None, None),
-            Node::Alias(_) => {
-                self.issue(value.span(), "an action value cannot be an alias here");
-                (String::new(), None, None)
+            Node::Mapping(_) | Node::Sequence(_) | Node::Alias(_) => {
+                (String::new(), None, Some(value.clone()))
             }
+            Node::Null { .. } => (String::new(), None, None),
         }
     }
 

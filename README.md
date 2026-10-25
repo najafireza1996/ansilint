@@ -1,7 +1,8 @@
 # ansilint
 
-**Status: pre-alpha.** The workspace, tooling and CI are wired; no linting rules
-are implemented yet (Phase 0 of the roadmap).
+**Status: pre-alpha.** Phase 1 is implemented: a working lint pipeline, the
+`min`-profile rules, configuration, `# noqa`, PEP8/JSON output and a CLI. Phase 2
+adds the text/format rule batch; the full upstream rule catalog is not covered yet.
 
 A fast, single-binary Ansible linter written in Rust that needs no Python and no
 `ansible-core` — and can run the checks that other fast linters skip, because it

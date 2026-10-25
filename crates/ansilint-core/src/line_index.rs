@@ -105,9 +105,13 @@ impl LineIndex {
             return LineCol { line: 1, col: 1 };
         };
         let start = usize::try_from(line.start).unwrap_or(usize::MAX);
-        let offset = usize::try_from(offset).unwrap_or(usize::MAX);
+        let end = usize::try_from(line.end).unwrap_or(usize::MAX);
+        let mut limit = usize::try_from(offset).unwrap_or(usize::MAX).min(end);
+        while limit > start && !text.is_char_boundary(limit) {
+            limit = limit.saturating_sub(1);
+        }
         let col = text
-            .get(start..offset)
+            .get(start..limit)
             .map_or(1, |slice| slice.chars().count().saturating_add(1));
         LineCol {
             line: u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX),
@@ -161,6 +165,22 @@ mod tests {
     }
 
     #[test]
+    fn crlf_terminator_offsets_use_the_line_end() {
+        let text = "a\r\nb";
+        let index = LineIndex::new(text);
+        assert_eq!(index.line_col(text, 1), LineCol { line: 1, col: 2 });
+        assert_eq!(index.line_col(text, 2), LineCol { line: 1, col: 2 });
+        assert_eq!(index.line_col(text, 3), LineCol { line: 2, col: 1 });
+    }
+
+    #[test]
+    fn offsets_inside_a_character_clamp_to_its_start() {
+        let text = "é";
+        let index = LineIndex::new(text);
+        assert_eq!(index.line_col(text, 1), LineCol { line: 1, col: 1 });
+    }
+
+    #[test]
     fn clamps_offsets_past_the_end() {
         let text = "a\n";
         let index = LineIndex::new(text);
@@ -172,6 +192,9 @@ mod tests {
         fn line_col_matches_a_naive_scan(text in text_strategy()) {
             let index = LineIndex::new(&text);
             for (offset, _) in text.char_indices().chain(std::iter::once((text.len(), ' '))) {
+                if text.as_bytes().get(offset) == Some(&b'\r') || text.as_bytes().get(offset) == Some(&b'\n') {
+                    continue;
+                }
                 let line = text.get(..offset).map_or(0, |prefix| prefix.matches('\n').count());
                 let line_start = text
                     .get(..offset)

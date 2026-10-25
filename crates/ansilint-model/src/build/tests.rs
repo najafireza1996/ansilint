@@ -148,3 +148,35 @@ fn reports_non_sequence_roots() {
         .iter()
         .any(|issue| issue.message.contains("sequence")));
 }
+
+#[test]
+fn builds_plays_from_every_document() {
+    let built = model(
+        "---\n- hosts: all\n  tasks:\n    - name: one\n      ansible.builtin.debug: {msg: one}\n---\n- hosts: web\n  tasks:\n    - name: two\n      ansible.builtin.debug: {msg: two}\n",
+        FileKind::Playbook,
+    );
+    let FileModel::Playbook(plays) = &built.model else {
+        panic!("expected a playbook");
+    };
+    assert_eq!(plays.len(), 2);
+    assert_eq!(
+        plays[1].keys.get("hosts").and_then(|node| node.as_str()),
+        Some("web")
+    );
+}
+
+#[test]
+fn does_not_mistake_merge_keys_or_any_errors_fatal_for_actions() {
+    let built = model(
+        "- &base\n  name: base\n  ansible.builtin.debug: {msg: hi}\n- <<: *base\n  name: child\n  ansible.builtin.debug: {msg: hi}\n- name: fatal\n  any_errors_fatal: true\n  ansible.builtin.debug: {msg: hi}\n",
+        FileKind::Tasks,
+    );
+    assert!(
+        !built
+            .issues
+            .iter()
+            .any(|issue| issue.message.contains("more than one action")),
+        "unexpected action issues: {:?}",
+        built.issues
+    );
+}

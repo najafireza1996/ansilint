@@ -95,7 +95,14 @@ struct Cli {
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(error) => {
+            let code = u8::from(error.use_stderr());
+            let _ = error.print();
+            return ExitCode::from(code);
+        }
+    };
     match run(&cli) {
         Ok(code) => code,
         Err(error) => {
@@ -128,7 +135,7 @@ fn run(cli: &Cli) -> Result<ExitCode> {
         println!("wrote {}", path.display());
         return Ok(ExitCode::SUCCESS);
     }
-    if !cli.quiet {
+    if !result.config.quiet {
         for warning in &result.warnings {
             eprintln!("ansilint: warning: {warning}");
         }

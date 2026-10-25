@@ -89,6 +89,7 @@ fn internal_error(cx: &FileCx<'_>, rule: &str, payload: &Box<dyn Any + Send>) ->
 mod tests {
     #![allow(
         clippy::expect_used,
+        clippy::assertions_on_constants,
         clippy::indexing_slicing,
         clippy::panic,
         reason = "tests use fixed fixtures and panic on broken assertions"
@@ -126,6 +127,14 @@ mod tests {
     }
 
     #[test]
+    fn panic_isolation_requires_unwinding() {
+        assert!(
+            cfg!(panic = "unwind"),
+            "internal-error uses catch_unwind; never enable panic=abort"
+        );
+    }
+
+    #[test]
     fn converts_panics_into_internal_errors() {
         let source = SourceFile::new("a.yml", "a: 1\n");
         let documents = ansilint_yaml::parse(&source).expect("valid YAML");
@@ -149,6 +158,7 @@ mod tests {
 mod string_payload_tests {
     #![allow(
         clippy::expect_used,
+        clippy::assertions_on_constants,
         clippy::indexing_slicing,
         clippy::panic,
         reason = "tests use fixed fixtures and panic on broken assertions"

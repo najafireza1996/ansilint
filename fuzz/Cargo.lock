@@ -10,8 +10,17 @@ version = "0.0.0"
 name = "ansilint-fuzz"
 version = "0.0.0"
 dependencies = [
+ "ansilint-model",
  "ansilint-yaml",
  "libfuzzer-sys",
+]
+
+[[package]]
+name = "ansilint-model"
+version = "0.0.0"
+dependencies = [
+ "ansilint-core",
+ "ansilint-yaml",
 ]
 
 [[package]]

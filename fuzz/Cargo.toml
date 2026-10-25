@@ -10,10 +10,18 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 ansilint-yaml = { path = "../crates/ansilint-yaml" }
+ansilint-model = { path = "../crates/ansilint-model" }
 
 [[bin]]
 name = "yaml_parse"
 path = "fuzz_targets/yaml_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "model"
+path = "fuzz_targets/model.rs"
 test = false
 doc = false
 bench = false

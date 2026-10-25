@@ -266,9 +266,11 @@ fn discover_ignore_file(options: &LintOptions, project: &Project) -> Option<Path
         .and_then(|path| path.parent())
         .unwrap_or(&project.root);
     for name in IGNORE_FILE_NAMES {
-        let candidate = base.join(name);
-        if candidate.is_file() {
-            return Some(candidate);
+        for directory in [base, project.root.as_path()] {
+            let candidate = directory.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
         }
     }
     None
@@ -283,10 +285,14 @@ fn load_ignore_file(path: Option<&Path>) -> Result<Option<IgnoreFile>, EngineErr
 }
 
 fn read_to_string(path: &Path) -> Result<String, EngineError> {
-    std::fs::read_to_string(path).map_err(|source| EngineError::Read {
+    let mut text = std::fs::read_to_string(path).map_err(|source| EngineError::Read {
         path: path.to_path_buf(),
         source,
-    })
+    })?;
+    if let Some(stripped) = text.strip_prefix('\u{feff}') {
+        text = stripped.to_string();
+    }
+    Ok(text)
 }
 
 fn resolve_inputs(options: &LintOptions) -> Vec<PathBuf> {
@@ -307,6 +313,9 @@ fn resolve_inputs(options: &LintOptions) -> Vec<PathBuf> {
 }
 
 fn active_rules(config: &Config) -> Vec<&'static dyn Rule> {
+    if !config.use_default_rules {
+        return Vec::new();
+    }
     ansilint_rules::all()
         .iter()
         .copied()
@@ -319,7 +328,9 @@ fn active_rules(config: &Config) -> Vec<&'static dyn Rule> {
 }
 
 fn matches_pattern(patterns: &[String], id: &str) -> bool {
-    patterns.iter().any(|pattern| pattern == id)
+    patterns
+        .iter()
+        .any(|pattern| pattern.split('[').next().is_some_and(|head| head == id))
 }
 
 #[allow(
@@ -378,15 +389,7 @@ fn process_file(
 }
 
 fn run_rules(cx: &FileCx<'_>, active_rules: &[&dyn Rule]) -> Vec<Finding> {
-    let mut findings = ansilint_rules::run(active_rules, cx);
-    for issue in &cx.built.issues {
-        findings.push(Finding::new(
-            Tag::new("warning"),
-            format!("model: {}", issue.message),
-            cx.source.path.clone(),
-            issue.span,
-            Severity::Warning,
-        ));
-    }
-    findings
+    // Model issues are retained for the schema/parser-error phases; surfacing
+    // them as warnings today would create false positives on valid YAML.
+    ansilint_rules::run(active_rules, cx)
 }

@@ -3,33 +3,82 @@ use ansilint_model::FileKind;
 use ansilint_config::Config;
 
 use super::{
-    default_patterns, find_git_root, has_yaml_extension, relative_output_path, Classifier,
-    ExcludeSet,
+    compile_glob, default_kinds, find_git_root, has_yaml_extension, relative_output_path,
+    Classifier, ExcludeSet,
 };
 
+/// H-E2: (path relative to the project root, upstream kind name), following
+/// upstream `DEFAULT_KINDS` order at ansible-lint 67a4871; first match wins.
+const UPSTREAM_KIND_SAMPLES: &[(&str, &str)] = &[
+    ("templates/motd.j2", "jinja2"),
+    ("roles/x/templates/conf.yml.j2", "jinja2"),
+    ("files/a.j2.bak", "jinja2"),
+    (".github/workflows/ci.yml", "yaml"),
+    ("roles/x/templates/config.yml", "text"),
+    ("execution-environment.yml", "execution-environment"),
+    (".ansible-lint", "ansible-lint-config"),
+    (".ansible-lint.yml", "ansible-lint-config"),
+    (".config/ansible-lint.yaml", "ansible-lint-config"),
+    ("ansible-navigator.yml", "ansible-navigator-config"),
+    ("inventory/hosts.yml", "inventory"),
+    ("roles/x/meta/requirements.yml", "requirements"),
+    ("galaxy.yml", "galaxy"),
+    ("releasenotes/notes/fix.yaml", "reno"),
+    ("group_vars/all.yml", "vars"),
+    ("host_vars/web1/main.yml", "vars"),
+    ("roles/x/vars/main.yml", "vars"),
+    ("roles/x/defaults/main.yml", "vars"),
+    ("roles/x/tasks/main.yml", "tasks"),
+    ("roles/x/tasks/sub/more.yml", "tasks"),
+    ("site.meta.yml", "play-argspec"),
+    ("playbooks/site.yml", "playbook"),
+    ("deploy-playbook.yml", "playbook"),
+    ("roles/x/handlers/main.yml", "handlers"),
+    ("roles/x/handlers/sub/main.yml", "yaml"),
+    ("tests/integration/targets/t/meta/main.yml", "test-meta"),
+    ("roles/x/meta/main.yml", "meta"),
+    ("meta/runtime.yml", "meta-runtime"),
+    ("roles/x/meta/argument_specs.yml", "role-arg-spec"),
+    (".config/molecule/config.yml", "yaml"),
+    ("molecule/default/requirements.yml", "requirements"),
+    ("molecule/default/molecule.yml", "yaml"),
+    ("requirements.yml", "requirements"),
+    ("molecule/default/converge.yml", "playbook"),
+    (".yamllint", "yaml"),
+    ("changelogs/changelog.yaml", "changelog"),
+    ("docker-compose.yml", "yaml"),
+    (".pre-commit-config.yaml", "yaml"),
+    ("tests/sanity/ignore-2.15.txt", "sanity-ignore-file"),
+    ("plugins/modules/foo.py", "plugin"),
+    ("setup.py", "python"),
+    ("playbooks/sub/site.yml", "yaml"),
+    ("rulebooks/r.yml", "yaml"),
+];
+
 #[test]
-fn defaults_are_ordered_from_specific_to_generic() {
-    let patterns = default_patterns();
-    assert_eq!(patterns.last().map(|(kind, _)| *kind), Some(FileKind::Yaml));
-    assert!(patterns.len() > 5);
+fn default_kinds_file_is_pinned_and_complete() {
+    assert!(super::DEFAULT_KINDS.contains("67a48717843c4d5d37681294cb5c9967781b0a31"));
+    assert_eq!(default_kinds().count(), 39);
+    let unusable: Vec<(&str, &str)> = default_kinds()
+        .filter(|(name, pattern)| {
+            FileKind::from_name(name).is_none() || compile_glob(pattern).is_none()
+        })
+        .collect();
+    assert_eq!(unusable, [("rulebook", "**/rulebooks/*.{yml,yaml")]);
 }
 
 #[test]
-fn classifies_role_files() {
+fn default_kinds_match_upstream_order_for_sample_paths() {
     let classifier = Classifier::new(&[]).0;
     let root = std::path::Path::new("/project");
-    assert_eq!(
-        classifier.classify(root, &root.join("roles/x/tasks/main.yml")),
-        FileKind::Tasks
-    );
-    assert_eq!(
-        classifier.classify(root, &root.join("roles/x/meta/main.yml")),
-        FileKind::Meta
-    );
-    assert_eq!(
-        classifier.classify(root, &root.join("playbooks/site.yml")),
-        FileKind::Yaml
-    );
+    let mismatches: Vec<String> = UPSTREAM_KIND_SAMPLES
+        .iter()
+        .filter_map(|(path, expected)| {
+            let actual = classifier.classify(root, &root.join(path)).as_str();
+            (actual != *expected).then(|| format!("{path}: expected {expected}, got {actual}"))
+        })
+        .collect();
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
 }
 
 #[test]

@@ -1,0 +1,49 @@
+# Default file-kind patterns, copied in upstream order from ansible-lint
+# `src/ansiblelint/config.py` DEFAULT_KINDS (H-E2). Do not sort: first match wins.
+# Source: https://github.com/ansible/ansible-lint/blob/67a48717843c4d5d37681294cb5c9967781b0a31/src/ansiblelint/config.py
+# Commit: 67a48717843c4d5d37681294cb5c9967781b0a31 (2026-10-30), retrieved 2026-11-01.
+# Facts only (kind name + glob), one entry per line as ["kind", "glob"].
+# Upstream matches with wcmatch: `*` never crosses `/`, and `**` that is not a
+# whole path component acts like `*`. The rulebook glob has an unclosed brace
+# upstream (it matches nothing there); it is kept verbatim and skipped here.
+kinds = [
+  ["jinja2", "**/*.j2"],
+  ["jinja2", "**/*.j2.*"],
+  ["yaml", ".github/**/*.{yaml,yml}"],
+  ["text", "**/templates/**/*.*"],
+  ["execution-environment", "**/execution-environment.yml"],
+  ["ansible-lint-config", "**/.ansible-lint"],
+  ["ansible-lint-config", "**/.ansible-lint.{yaml,yml}"],
+  ["ansible-lint-config", "**/.config/ansible-lint.{yaml,yml}"],
+  ["ansible-navigator-config", "**/ansible-navigator.{yaml,yml}"],
+  ["inventory", "**/inventory/**.{yaml,yml}"],
+  ["requirements", "**/meta/requirements.{yaml,yml}"],
+  ["galaxy", "**/galaxy.yml"],
+  ["reno", "**/releasenotes/*/*.{yaml,yml}"],
+  ["vars", "**/{host_vars,group_vars,vars,defaults}/**/*.{yaml,yml}"],
+  ["tasks", "**/tasks/**/*.{yaml,yml}"],
+  ["rulebook", "**/rulebooks/*.{yml,yaml"],
+  ["pattern", "**/extensions/patterns/*/meta/pattern.json"],
+  ["play-argspec", "**/*.meta.{yaml,yml}"],
+  ["playbook", "**/playbooks/*.{yml,yaml}"],
+  ["playbook", "**/*playbook*.{yml,yaml}"],
+  ["playbook", "**/extensions/patterns/*/playbooks/*.{yml,yaml}"],
+  ["role", "**/roles/*/"],
+  ["handlers", "**/handlers/*.{yaml,yml}"],
+  ["test-meta", "**/tests/integration/targets/*/meta/main.{yaml,yml}"],
+  ["meta", "**/meta/main.{yaml,yml}"],
+  ["meta-runtime", "**/meta/runtime.{yaml,yml}"],
+  ["role-arg-spec", "**/meta/argument_specs.{yaml,yml}"],
+  ["yaml", ".config/molecule/config.{yaml,yml}"],
+  ["requirements", "**/molecule/*/{collections,requirements}.{yaml,yml}"],
+  ["yaml", "**/molecule/*/{base,molecule}.{yaml,yml}"],
+  ["requirements", "**/requirements.{yaml,yml}"],
+  ["playbook", "**/molecule/*/*.{yaml,yml}"],
+  ["yaml", "**/{.ansible-lint,.yamllint}"],
+  ["changelog", "**/changelogs/changelog.{yaml,yml}"],
+  ["yaml", "**/*.{yaml,yml}"],
+  ["yaml", "**/.*.{yaml,yml}"],
+  ["sanity-ignore-file", "**/tests/sanity/ignore-*.txt"],
+  ["plugin", "**/plugins/{action,become,cache,callback,connection,filter,inventory,lookup,modules,test}/**/*.py"],
+  ["python", "**/*.py"],
+]

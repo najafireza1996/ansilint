@@ -104,13 +104,12 @@ The MSRV decision is recorded here per P0-T2. Changing it requires an ADR (ENG-4
 ## File-kind detection
 
 `FileKind` detection is an ordered list of `(kind, glob)` rules; the first match
-wins and user `kinds:` entries are prepended. Phase 1 implements defaults for
-`meta/main.yml`, `meta/runtime.yml`, `meta/argument_specs.yml`, `galaxy.yml`,
-`requirements.yml`, Molecule, execution environments, `tasks/`, `handlers/`,
-`defaults/`, `vars/`, `group_vars/` and `host_vars/`, followed by a generic YAML
-fallback. Content sniffing promotes a generic file to a playbook when the first
-list item has `hosts`, or to tasks when it has a non-keyword action key. The exact
-upstream pattern list and precedence remain `VERIFY-UPSTREAM` (OPEN_QUESTIONS #3).
+wins and user `kinds:` entries are prepended. The defaults are upstream's ordered
+`DEFAULT_KINDS`, copied verbatim into `data/default_kinds.toml` with the pinned
+commit (H-E2). Globs follow upstream's wcmatch semantics: `*` never crosses `/`,
+and a `**` that is not a whole path component acts like `*`. Content sniffing
+only promotes a generic YAML file to a playbook when a top-level list item, in
+any document, has `hosts` or `import_playbook`; it never infers task files.
 
 ## YAML parser
 

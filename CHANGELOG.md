@@ -9,6 +9,10 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- Default file kinds now follow upstream's ordered `DEFAULT_KINDS`: for example
+  `playbooks/*.yml` and Molecule scenario files are playbooks, `defaults/` is
+  `vars`, and `*` in kind globs no longer crosses directories. Upstream kind
+  names such as `jinja2` or `ansible-lint-config` are accepted in `kinds`.
 - Exit codes now match upstream: usage errors exit `2` (was `1`), invalid
   configuration exits `3`, and a run that analyzes no file exits `5`.
 - An unknown kind name or invalid glob in `kinds` now prints a notice instead of

@@ -32,6 +32,32 @@ pub enum FileKind {
     ExecutionEnvironment,
     /// A changelog fragment or file.
     Changelog,
+    /// A Jinja2 template.
+    Jinja2,
+    /// A non-YAML text file such as a template.
+    Text,
+    /// An ansible-lint configuration file.
+    AnsibleLintConfig,
+    /// An ansible-navigator configuration file.
+    AnsibleNavigatorConfig,
+    /// A reno release note.
+    Reno,
+    /// An Event-Driven Ansible rulebook.
+    Rulebook,
+    /// An extension pattern definition.
+    Pattern,
+    /// A playbook argument spec (`*.meta.yml`).
+    PlayArgspec,
+    /// A role directory.
+    Role,
+    /// Integration-test target metadata.
+    TestMeta,
+    /// An `ansible-test` sanity ignore file.
+    SanityIgnoreFile,
+    /// A collection plugin source file.
+    Plugin,
+    /// A Python file.
+    Python,
     /// Generic YAML that is not Ansible-specific.
     Yaml,
     /// The kind could not be determined.
@@ -57,6 +83,19 @@ impl FileKind {
             Self::Molecule => "molecule",
             Self::ExecutionEnvironment => "execution-environment",
             Self::Changelog => "changelog",
+            Self::Jinja2 => "jinja2",
+            Self::Text => "text",
+            Self::AnsibleLintConfig => "ansible-lint-config",
+            Self::AnsibleNavigatorConfig => "ansible-navigator-config",
+            Self::Reno => "reno",
+            Self::Rulebook => "rulebook",
+            Self::Pattern => "pattern",
+            Self::PlayArgspec => "play-argspec",
+            Self::Role => "role",
+            Self::TestMeta => "test-meta",
+            Self::SanityIgnoreFile => "sanity-ignore-file",
+            Self::Plugin => "plugin",
+            Self::Python => "python",
             Self::Yaml => "yaml",
             Self::Unknown => "unknown",
         }
@@ -80,6 +119,19 @@ impl FileKind {
             "molecule" => Some(Self::Molecule),
             "execution-environment" => Some(Self::ExecutionEnvironment),
             "changelog" => Some(Self::Changelog),
+            "jinja2" => Some(Self::Jinja2),
+            "text" => Some(Self::Text),
+            "ansible-lint-config" => Some(Self::AnsibleLintConfig),
+            "ansible-navigator-config" => Some(Self::AnsibleNavigatorConfig),
+            "reno" => Some(Self::Reno),
+            "rulebook" => Some(Self::Rulebook),
+            "pattern" => Some(Self::Pattern),
+            "play-argspec" => Some(Self::PlayArgspec),
+            "role" => Some(Self::Role),
+            "test-meta" => Some(Self::TestMeta),
+            "sanity-ignore-file" => Some(Self::SanityIgnoreFile),
+            "plugin" => Some(Self::Plugin),
+            "python" => Some(Self::Python),
             "yaml" => Some(Self::Yaml),
             "unknown" => Some(Self::Unknown),
             _ => None,
@@ -114,6 +166,19 @@ mod tests {
             FileKind::Molecule,
             FileKind::ExecutionEnvironment,
             FileKind::Changelog,
+            FileKind::Jinja2,
+            FileKind::Text,
+            FileKind::AnsibleLintConfig,
+            FileKind::AnsibleNavigatorConfig,
+            FileKind::Reno,
+            FileKind::Rulebook,
+            FileKind::Pattern,
+            FileKind::PlayArgspec,
+            FileKind::Role,
+            FileKind::TestMeta,
+            FileKind::SanityIgnoreFile,
+            FileKind::Plugin,
+            FileKind::Python,
             FileKind::Yaml,
             FileKind::Unknown,
         ] {

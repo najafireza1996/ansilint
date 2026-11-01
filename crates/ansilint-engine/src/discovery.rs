@@ -6,7 +6,7 @@ use std::path::{Component, Path, PathBuf};
 use ansilint_config::{Config, KindPattern, CONFIG_FILE_NAMES};
 use ansilint_model::{is_import_playbook, FileKind};
 use ansilint_yaml::{Document, Node};
-use globset::{Glob, GlobMatcher};
+use globset::{Glob, GlobBuilder, GlobMatcher};
 use ignore::WalkBuilder;
 
 use crate::error::EngineError;
@@ -204,17 +204,19 @@ impl Classifier {
                 notices.push(format!("kinds: unknown file kind `{}`", pattern.kind));
                 continue;
             };
-            match Glob::new(&pattern.glob) {
-                Ok(glob) => rules.push((kind, glob.compile_matcher())),
-                Err(_) => notices.push(format!(
+            match compile_glob(&pattern.glob) {
+                Some(glob) => rules.push((kind, glob)),
+                None => notices.push(format!(
                     "kinds: invalid glob `{}` for `{}`",
                     pattern.glob, pattern.kind
                 )),
             }
         }
-        for (kind, pattern) in default_patterns() {
-            if let Ok(glob) = Glob::new(pattern) {
-                rules.push((*kind, glob.compile_matcher()));
+        // Only upstream's unclosed-brace rulebook glob fails here; it matches
+        // nothing upstream either (pinned by a test).
+        for (name, pattern) in default_kinds() {
+            if let (Some(kind), Some(glob)) = (FileKind::from_name(name), compile_glob(pattern)) {
+                rules.push((kind, glob));
             }
         }
         (Self { rules }, notices)
@@ -232,26 +234,39 @@ impl Classifier {
     }
 }
 
-fn default_patterns() -> &'static [(FileKind, &'static str)] {
-    &[
-        (FileKind::Meta, "**/meta/main.{yml,yaml}"),
-        (FileKind::MetaRuntime, "**/meta/runtime.{yml,yaml}"),
-        (FileKind::RoleArgSpec, "**/meta/argument_specs.{yml,yaml}"),
-        (FileKind::Galaxy, "**/galaxy.{yml,yaml}"),
-        (FileKind::Requirements, "**/requirements.{yml,yaml}"),
-        (FileKind::Molecule, "**/molecule/**/*.{yml,yaml}"),
-        (
-            FileKind::ExecutionEnvironment,
-            "**/execution-environment.{yml,yaml}",
-        ),
-        (FileKind::Tasks, "**/tasks/**/*.{yml,yaml}"),
-        (FileKind::Handlers, "**/handlers/**/*.{yml,yaml}"),
-        (FileKind::Defaults, "**/defaults/**/*.{yml,yaml}"),
-        (FileKind::Vars, "**/vars/**/*.{yml,yaml}"),
-        (FileKind::Vars, "**/group_vars/**/*.{yml,yaml}"),
-        (FileKind::Vars, "**/host_vars/**/*.{yml,yaml}"),
-        (FileKind::Yaml, "**/*.{yml,yaml}"),
-    ]
+/// Upstream `DEFAULT_KINDS` (H-E2), checked in as data so the facts live in
+/// one place (ENG-15).
+const DEFAULT_KINDS: &str = include_str!("../../../data/default_kinds.toml");
+
+/// `(kind name, glob)` pairs in upstream order. Entry lines have the fixed
+/// shape `["kind", "glob"],`; everything else in the file is header.
+fn default_kinds() -> impl Iterator<Item = (&'static str, &'static str)> {
+    DEFAULT_KINDS.lines().filter_map(|line| {
+        line.trim()
+            .strip_prefix("[\"")?
+            .strip_suffix("\"],")?
+            .split_once("\", \"")
+    })
+}
+
+/// Compiles a glob with upstream (wcmatch) semantics: `*` never crosses `/`,
+/// and a `**` that is not a whole path component acts like `*`.
+fn compile_glob(pattern: &str) -> Option<GlobMatcher> {
+    let translated: Vec<String> = pattern
+        .split('/')
+        .map(|component| {
+            if component != "**" && component.contains("**") {
+                component.replace("**", "*")
+            } else {
+                component.to_string()
+            }
+        })
+        .collect();
+    GlobBuilder::new(&translated.join("/"))
+        .literal_separator(true)
+        .build()
+        .ok()
+        .map(|glob| glob.compile_matcher())
 }
 
 /// Improves a path-only classification by sniffing the parsed content.

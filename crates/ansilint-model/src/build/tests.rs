@@ -126,11 +126,11 @@ fn parses_roles_and_legacy_action_mappings() {
 #[test]
 fn splits_legacy_action_strings() {
     assert_eq!(
-        super::split_legacy_action("shell echo hi"),
+        super::action::split_legacy_action("shell echo hi"),
         ("shell".to_string(), Some("echo hi".to_string()))
     );
     assert_eq!(
-        super::split_legacy_action("  shell  "),
+        super::action::split_legacy_action("  shell  "),
         ("shell".to_string(), None)
     );
 }

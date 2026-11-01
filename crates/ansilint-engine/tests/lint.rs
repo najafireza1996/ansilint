@@ -260,3 +260,19 @@ fn can_disable_default_rules() {
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
 }
+
+#[test]
+fn tag_selectors_that_match_no_rule_produce_a_notice() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "tags: [syntax, no-such-tag]\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+    assert_eq!(
+        result.warnings,
+        ["tag selector `no-such-tag` matches no rule"]
+    );
+}

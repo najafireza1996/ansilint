@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `-t/--tags` CLI flag; a `tags` selector that matches no rule now prints a
+  notice instead of silently producing an empty report.
 - Content sniffing checks every top-level item in every document and recognises
   `import_playbook`; a playbook made only of imports is no longer reported as
   empty. Unmatched YAML is still never treated as a task file.

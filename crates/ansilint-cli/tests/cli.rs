@@ -9,6 +9,7 @@
 use std::fs;
 
 use assert_cmd::Command;
+use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 
 fn write(path: &std::path::Path, contents: &str) {
@@ -169,4 +170,19 @@ fn quiet_configuration_suppresses_warnings() {
         .assert()
         .success()
         .stderr("");
+}
+
+#[test]
+fn tags_flag_keeps_only_matching_rules() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(&directory.path().join("bad.yml"), "a: [1,\n");
+    Command::cargo_bin("ansilint")
+        .expect("binary")
+        .current_dir(directory.path())
+        .args(["-t", "syntax", "site.yml", "bad.yml"])
+        .assert()
+        .code(2)
+        .stdout(contains("parser-error"))
+        .stdout(contains("empty playbook").not());
 }

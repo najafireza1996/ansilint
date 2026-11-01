@@ -67,6 +67,23 @@ fn tag_selected(tag: &Tag, patterns: &[String]) -> bool {
     })
 }
 
+/// Notices for `tags` selectors that no registered rule can satisfy, so a
+/// typo never silently yields an empty report (H-B1).
+pub(crate) fn unmatched_tag_notices(patterns: &[String]) -> Vec<String> {
+    patterns
+        .iter()
+        .map(|pattern| pattern.trim())
+        .filter(|pattern| {
+            let rule_id = pattern.split('[').next().unwrap_or(pattern);
+            !ansilint_rules::all().iter().any(|rule| {
+                let meta = rule.meta();
+                meta.id == rule_id || meta.tags.contains(pattern)
+            })
+        })
+        .map(|pattern| format!("tag selector `{pattern}` matches no rule"))
+        .collect()
+}
+
 fn noqa_matches(line: &str, tag: &Tag) -> bool {
     let Some(index) = line.find("# noqa") else {
         return false;

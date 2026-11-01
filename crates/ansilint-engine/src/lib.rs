@@ -134,6 +134,7 @@ pub fn lint(options: &LintOptions) -> Result<LintResult, EngineError> {
     let project = discovery::discover_project(&options.cwd, options.config_path.as_deref());
     let (mut config, mut warnings) = load_config(project.config_path.as_deref())?;
     config = merge(&config, &options.overrides);
+    warnings.extend(post::unmatched_tag_notices(&config.tags));
     let ignore_file_path = discover_ignore_file(options, &project);
     let ignore = load_ignore_file(ignore_file_path.as_deref())?;
     let classifier = Classifier::new(&config.kinds);

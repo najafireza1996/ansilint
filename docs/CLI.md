@@ -23,6 +23,7 @@ root.
   -x, --skip-list <RULES>        Hide findings for these tags
   -w, --warn-list <RULES>        Report but do not fail on these tags
       --enable-list <RULES>      Enable opt-in rules
+  -t, --tags <TAGS>              Only report rules whose id, rule[sub] or rule tag matches
       --exclude <PATH>...        Exclude paths (relative to the current directory)
       --strict                   Treat warnings as failures
   -q, --quiet                    Suppress non-finding output

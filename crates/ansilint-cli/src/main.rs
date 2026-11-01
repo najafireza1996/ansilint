@@ -51,6 +51,9 @@ struct Cli {
         value_name = "RULES"
     )]
     warn_list: Vec<String>,
+    /// Only report rules whose id, `rule[sub]` tag or rule tag matches.
+    #[arg(short = 't', long = "tags", value_delimiter = ',', value_name = "TAGS")]
+    tags: Vec<String>,
     /// Opt-in rules to enable.
     #[arg(long = "enable-list", value_delimiter = ',', value_name = "RULES")]
     enable_list: Vec<String>,
@@ -162,6 +165,7 @@ fn build_options(cli: &Cli) -> Result<LintOptions> {
         skip_list: cli.skip_list.clone(),
         warn_list: cli.warn_list.clone(),
         enable_list: cli.enable_list.clone(),
+        tags: cli.tags.clone(),
         quiet: cli.quiet.then_some(true),
         strict: cli.strict.then_some(true),
         verbosity: (cli.verbosity > 0).then_some(cli.verbosity),

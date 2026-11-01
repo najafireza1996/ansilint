@@ -45,6 +45,16 @@ Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
 "lists extend / scalars override", unknown and ignored keys, and the ignore-file
 grammar.
 
+## `tags` (and `-t/--tags`)
+
+Upstream: "only check rules whose id/tags match these values"
+(<https://docs.ansible.com/projects/lint/usage/>). A finding is kept when a
+selector equals its rule id, its full `rule[sub]` tag, or any tag of its rule
+(as listed by `-T`, e.g. `syntax`). CLI values extend the config list. A
+selector that matches no registered rule produces a notice
+(`tag selector `x` matches no rule`), so a typo never yields a silently empty
+report.
+
 ## Ignore file
 
 Discovery order: `ANSIBLE_LINT_IGNORE_FILE`, then `.ansible-lint-ignore` and

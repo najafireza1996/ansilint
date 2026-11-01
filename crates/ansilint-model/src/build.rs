@@ -13,7 +13,7 @@ use crate::FileKind;
 
 /// Builds a model. Malformed constructs become [`ModelIssue`]s, never errors.
 #[must_use]
-pub fn build(documents: &[Document], kind: FileKind) -> BuiltModel {
+pub fn build(documents: &[Document], kind: FileKind) -> BuiltModel<'_> {
     let mut builder = Builder::default();
     let model = match kind {
         FileKind::Playbook => builder.playbook(documents),
@@ -57,7 +57,7 @@ impl<'a> Builder<'a> {
         });
     }
 
-    fn playbook(&mut self, documents: &'a [Document]) -> FileModel {
+    fn playbook(&mut self, documents: &'a [Document]) -> FileModel<'a> {
         let mut plays = Vec::new();
         let mut play_index = 0_usize;
         for document in documents {
@@ -82,7 +82,7 @@ impl<'a> Builder<'a> {
         FileModel::Playbook(plays)
     }
 
-    fn task_file(&mut self, documents: &'a [Document], in_handler: bool) -> Vec<TaskItem> {
+    fn task_file(&mut self, documents: &'a [Document], in_handler: bool) -> Vec<TaskItem<'a>> {
         let ctx = TaskCtx {
             in_handler,
             ..TaskCtx::default()
@@ -98,7 +98,7 @@ impl<'a> Builder<'a> {
         items
     }
 
-    fn play(&mut self, node: &'a Node, index: usize) -> Option<Play> {
+    fn play(&mut self, node: &'a Node, index: usize) -> Option<Play<'a>> {
         let Some(mapping) = node.as_mapping() else {
             self.issue(node.span(), "a play must be a mapping");
             return None;
@@ -121,11 +121,11 @@ impl<'a> Builder<'a> {
             post_tasks,
             handlers,
             roles,
-            vars: mapping.get("vars").cloned(),
+            vars: mapping.get("vars"),
         })
     }
 
-    fn roles(&mut self, node: Option<&'a Node>) -> Vec<RoleRef> {
+    fn roles(&mut self, node: Option<&'a Node>) -> Vec<RoleRef<'a>> {
         let Some(node) = node else {
             return Vec::new();
         };
@@ -142,11 +142,11 @@ impl<'a> Builder<'a> {
         roles
     }
 
-    fn role(&mut self, node: &Node) -> Option<RoleRef> {
+    fn role(&mut self, node: &'a Node) -> Option<RoleRef<'a>> {
         if let Some(name) = node.as_str() {
             return Some(RoleRef {
                 span: node.span(),
-                name: Some(Spanned::new(name.to_string(), node.span())),
+                name: Some(Spanned::new(name, node.span())),
                 keys: KeyMap::default(),
             });
         }
@@ -155,12 +155,10 @@ impl<'a> Builder<'a> {
             return None;
         };
         let keys = self.key_map(mapping, &[]);
-        let name = keys.get("role").and_then(Node::as_str).map(|name| {
-            Spanned::new(
-                name.to_string(),
-                keys.key_span("role").unwrap_or(node.span()),
-            )
-        });
+        let name = keys
+            .get("role")
+            .and_then(Node::as_str)
+            .map(|name| Spanned::new(name, keys.key_span("role").unwrap_or(node.span())));
         Some(RoleRef {
             span: node.span(),
             name,
@@ -168,7 +166,7 @@ impl<'a> Builder<'a> {
         })
     }
 
-    fn task_list(&mut self, node: Option<&'a Node>, ctx: &TaskCtx) -> Vec<TaskItem> {
+    fn task_list(&mut self, node: Option<&'a Node>, ctx: &TaskCtx) -> Vec<TaskItem<'a>> {
         let Some(node) = node else {
             return Vec::new();
         };
@@ -185,7 +183,7 @@ impl<'a> Builder<'a> {
         items
     }
 
-    fn task_item(&mut self, node: &'a Node, ctx: &TaskCtx) -> Option<TaskItem> {
+    fn task_item(&mut self, node: &'a Node, ctx: &TaskCtx) -> Option<TaskItem<'a>> {
         if let Some(alias) = node.as_alias() {
             return self.aliased_task(node.span(), alias, ctx);
         }
@@ -201,7 +199,7 @@ impl<'a> Builder<'a> {
     }
 
     /// A task written as `- *anchor`; the span stays on the alias.
-    fn aliased_task(&mut self, span: Span, alias: &Alias, ctx: &TaskCtx) -> Option<TaskItem> {
+    fn aliased_task(&mut self, span: Span, alias: &Alias, ctx: &TaskCtx) -> Option<TaskItem<'a>> {
         let mapping = self.resolve(alias)?.as_mapping()?;
         // Aliased blocks are not expanded: a block can alias itself or fan out
         // through block/rescue/always, which would grow exponentially.
@@ -212,7 +210,7 @@ impl<'a> Builder<'a> {
         Some(Self::wrap_task(task))
     }
 
-    fn wrap_task(task: Task) -> TaskItem {
+    fn wrap_task(task: Task<'a>) -> TaskItem<'a> {
         if task.is_include() {
             TaskItem::IncludeImport(task)
         } else {
@@ -220,7 +218,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn block(&mut self, node: &'a Node, mapping: &'a Mapping, ctx: &TaskCtx) -> Block {
+    fn block(&mut self, node: &'a Node, mapping: &'a Mapping, ctx: &TaskCtx) -> Block<'a> {
         // Unreachable for parsed input (each block level is two YAML levels),
         // kept so the walk stays bounded for any `Node` tree.
         if usize::try_from(ctx.block_depth).unwrap_or(usize::MAX) >= MAX_NESTING_DEPTH {
@@ -248,7 +246,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    fn task(&mut self, span: Span, mapping: &'a Mapping, ctx: &TaskCtx) -> Option<Task> {
+    fn task(&mut self, span: Span, mapping: &'a Mapping, ctx: &TaskCtx) -> Option<Task<'a>> {
         let (own_index, entry) = match self.action_index(mapping) {
             Some(index) => (Some(index), mapping.entries.get(index)?),
             None => (None, self.merged_action(mapping)?),
@@ -258,7 +256,7 @@ impl<'a> Builder<'a> {
         let name = keys
             .get("name")
             .and_then(Node::as_str)
-            .map(|name| Spanned::new(name.to_string(), keys.key_span("name").unwrap_or(span)));
+            .map(|name| Spanned::new(name, keys.key_span("name").unwrap_or(span)));
         Some(Task {
             span,
             name,
@@ -268,7 +266,7 @@ impl<'a> Builder<'a> {
         })
     }
 
-    fn key_map(&mut self, mapping: &Mapping, excluded: &[&str]) -> KeyMap {
+    fn key_map(&mut self, mapping: &'a Mapping, excluded: &[&str]) -> KeyMap<'a> {
         let mut entries = Vec::new();
         for entry in &mapping.entries {
             let Some(key) = entry.key.as_str() else {
@@ -279,14 +277,14 @@ impl<'a> Builder<'a> {
                 continue;
             }
             entries.push(KeyValue {
-                key: Spanned::new(key.to_string(), entry.key_span),
-                value: entry.value.clone(),
+                key: Spanned::new(key, entry.key_span),
+                value: &entry.value,
             });
         }
         KeyMap { entries }
     }
 
-    fn key_map_excluding(&mut self, mapping: &Mapping, index: Option<usize>) -> KeyMap {
+    fn key_map_excluding(&mut self, mapping: &'a Mapping, index: Option<usize>) -> KeyMap<'a> {
         let mut entries = Vec::new();
         for (current, entry) in mapping.entries.iter().enumerate() {
             if Some(current) == index {
@@ -297,8 +295,8 @@ impl<'a> Builder<'a> {
                 continue;
             };
             entries.push(KeyValue {
-                key: Spanned::new(key.to_string(), entry.key_span),
-                value: entry.value.clone(),
+                key: Spanned::new(key, entry.key_span),
+                value: &entry.value,
             });
         }
         KeyMap { entries }

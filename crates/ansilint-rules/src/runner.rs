@@ -38,7 +38,7 @@ fn visit_rule(rule: &dyn Rule, cx: &FileCx<'_>, out: &mut Vec<Finding>) {
     }
 }
 
-fn visit_plays(rule: &dyn Rule, cx: &FileCx<'_>, plays: &[Play], out: &mut Vec<Finding>) {
+fn visit_plays(rule: &dyn Rule, cx: &FileCx<'_>, plays: &[Play<'_>], out: &mut Vec<Finding>) {
     for play in plays {
         rule.check_play(cx, play, out);
         visit_items(rule, cx, &play.pre_tasks, out);
@@ -48,7 +48,7 @@ fn visit_plays(rule: &dyn Rule, cx: &FileCx<'_>, plays: &[Play], out: &mut Vec<F
     }
 }
 
-fn visit_items(rule: &dyn Rule, cx: &FileCx<'_>, items: &[TaskItem], out: &mut Vec<Finding>) {
+fn visit_items(rule: &dyn Rule, cx: &FileCx<'_>, items: &[TaskItem<'_>], out: &mut Vec<Finding>) {
     for item in items {
         match item {
             TaskItem::Task(task) | TaskItem::IncludeImport(task) => rule.check_task(cx, task, out),
@@ -57,7 +57,7 @@ fn visit_items(rule: &dyn Rule, cx: &FileCx<'_>, items: &[TaskItem], out: &mut V
     }
 }
 
-fn visit_block(rule: &dyn Rule, cx: &FileCx<'_>, block: &Block, out: &mut Vec<Finding>) {
+fn visit_block(rule: &dyn Rule, cx: &FileCx<'_>, block: &Block<'_>, out: &mut Vec<Finding>) {
     rule.check_block(cx, block, out);
     visit_items(rule, cx, &block.block, out);
     visit_items(rule, cx, &block.rescue, out);

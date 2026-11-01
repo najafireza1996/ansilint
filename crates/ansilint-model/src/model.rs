@@ -22,28 +22,28 @@ impl<T> Spanned<T> {
 
 /// One key/value pair from a task, block or play mapping.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct KeyValue {
-    /// Key and its span.
-    pub key: Spanned<String>,
-    /// Raw YAML value.
-    pub value: Node,
+pub struct KeyValue<'a> {
+    /// Key and its span, borrowed from the document.
+    pub key: Spanned<&'a str>,
+    /// Raw YAML value, borrowed from the document (H-C8: never cloned).
+    pub value: &'a Node,
 }
 
 /// Ordered, duplicate-preserving keys.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KeyMap {
+pub struct KeyMap<'a> {
     /// Entries in source order.
-    pub entries: Vec<KeyValue>,
+    pub entries: Vec<KeyValue<'a>>,
 }
 
-impl KeyMap {
+impl<'a> KeyMap<'a> {
     /// Returns the first value for a key.
     #[must_use]
-    pub fn get(&self, key: &str) -> Option<&Node> {
+    pub fn get(&self, key: &str) -> Option<&'a Node> {
         self.entries
             .iter()
             .find(|entry| entry.key.value == key)
-            .map(|entry| &entry.value)
+            .map(|entry| entry.value)
     }
 
     /// Returns the span of the first key with this name.
@@ -82,33 +82,33 @@ pub struct ModuleRef {
 
 /// A task action: the module key plus its arguments.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Action {
+pub struct Action<'a> {
     /// The action key as written.
-    pub raw_key: Spanned<String>,
+    pub raw_key: Spanned<&'a str>,
     /// Normalized module reference.
     pub module: ModuleRef,
-    /// Free-form value (`shell: echo hi`).
-    pub free_form: Option<Spanned<String>>,
-    /// Mapping-form arguments.
-    pub args: Option<Node>,
+    /// Free-form value (`shell: echo hi`), borrowed from the document.
+    pub free_form: Option<Spanned<&'a str>>,
+    /// Mapping-form arguments, borrowed from the document.
+    pub args: Option<&'a Node>,
 }
 
 /// A task.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Task {
+pub struct Task<'a> {
     /// Span of the whole task mapping.
     pub span: Span,
     /// `name`, when present.
-    pub name: Option<Spanned<String>>,
+    pub name: Option<Spanned<&'a str>>,
     /// Normalized action.
-    pub action: Action,
+    pub action: Action<'a>,
     /// Every non-action key.
-    pub keys: KeyMap,
+    pub keys: KeyMap<'a>,
     /// Inherited context.
     pub ctx: TaskCtx,
 }
 
-impl Task {
+impl Task<'_> {
     /// Returns `true` when this is an include/import action.
     #[must_use]
     pub fn is_include(&self) -> bool {
@@ -118,34 +118,34 @@ impl Task {
 
 /// A block with optional rescue and always sections.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Block {
+pub struct Block<'a> {
     /// Span of the block mapping.
     pub span: Span,
     /// Main task list.
-    pub block: Vec<TaskItem>,
+    pub block: Vec<TaskItem<'a>>,
     /// Rescue task list.
-    pub rescue: Vec<TaskItem>,
+    pub rescue: Vec<TaskItem<'a>>,
     /// Always task list.
-    pub always: Vec<TaskItem>,
+    pub always: Vec<TaskItem<'a>>,
     /// Non-block keys.
-    pub keys: KeyMap,
+    pub keys: KeyMap<'a>,
 }
 
 /// An item in a task list.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TaskItem {
+pub enum TaskItem<'a> {
     /// A regular task.
-    Task(Task),
+    Task(Task<'a>),
     /// A block.
-    Block(Block),
+    Block(Block<'a>),
     /// An include/import action.
-    IncludeImport(Task),
+    IncludeImport(Task<'a>),
 }
 
-impl TaskItem {
+impl<'a> TaskItem<'a> {
     /// Returns the task for task and include items.
     #[must_use]
-    pub fn as_task(&self) -> Option<&Task> {
+    pub fn as_task(&self) -> Option<&Task<'a>> {
         match self {
             Self::Task(task) | Self::IncludeImport(task) => Some(task),
             Self::Block(_) => None,
@@ -164,55 +164,55 @@ impl TaskItem {
 
 /// A role reference inside a play.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RoleRef {
+pub struct RoleRef<'a> {
     /// Span of the role entry.
     pub span: Span,
     /// Role name, when written as a scalar or with a `role` key.
-    pub name: Option<Spanned<String>>,
+    pub name: Option<Spanned<&'a str>>,
     /// Role parameters.
-    pub keys: KeyMap,
+    pub keys: KeyMap<'a>,
 }
 
 /// A play.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Play {
+pub struct Play<'a> {
     /// Span of the play mapping.
     pub span: Span,
     /// Every play key.
-    pub keys: KeyMap,
+    pub keys: KeyMap<'a>,
     /// `pre_tasks`.
-    pub pre_tasks: Vec<TaskItem>,
+    pub pre_tasks: Vec<TaskItem<'a>>,
     /// `tasks`.
-    pub tasks: Vec<TaskItem>,
+    pub tasks: Vec<TaskItem<'a>>,
     /// `post_tasks`.
-    pub post_tasks: Vec<TaskItem>,
+    pub post_tasks: Vec<TaskItem<'a>>,
     /// `handlers`.
-    pub handlers: Vec<TaskItem>,
+    pub handlers: Vec<TaskItem<'a>>,
     /// `roles`.
-    pub roles: Vec<RoleRef>,
+    pub roles: Vec<RoleRef<'a>>,
     /// `vars`, when present.
-    pub vars: Option<Node>,
+    pub vars: Option<&'a Node>,
 }
 
 /// The model for one file.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FileModel {
+pub enum FileModel<'a> {
     /// A playbook.
-    Playbook(Vec<Play>),
+    Playbook(Vec<Play<'a>>),
     /// A task file.
-    Tasks(Vec<TaskItem>),
+    Tasks(Vec<TaskItem<'a>>),
     /// A handler file.
-    Handlers(Vec<TaskItem>),
+    Handlers(Vec<TaskItem<'a>>),
     /// A file kind without a specialized model yet.
     Other,
     /// The kind could not be determined.
     Unknown,
 }
 
-impl FileModel {
+impl<'a> FileModel<'a> {
     /// Returns plays for playbook models.
     #[must_use]
-    pub fn plays(&self) -> &[Play] {
+    pub fn plays(&self) -> &[Play<'a>] {
         match self {
             Self::Playbook(plays) => plays,
             _ => &[],
@@ -221,7 +221,7 @@ impl FileModel {
 
     /// Returns task items for task and handler models.
     #[must_use]
-    pub fn task_items(&self) -> &[TaskItem] {
+    pub fn task_items(&self) -> &[TaskItem<'a>] {
         match self {
             Self::Tasks(items) | Self::Handlers(items) => items,
             _ => &[],
@@ -240,9 +240,9 @@ pub struct ModelIssue {
 
 /// The model plus any issues found while building it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BuiltModel {
+pub struct BuiltModel<'a> {
     /// The model, always present even when malformed.
-    pub model: FileModel,
+    pub model: FileModel<'a>,
     /// Tolerated problems.
     pub issues: Vec<ModelIssue>,
 }
@@ -261,26 +261,26 @@ mod tests {
         Action, FileModel, KeyMap, KeyValue, ModuleRef, Play, Spanned, Task, TaskCtx, TaskItem,
     };
 
-    fn keys() -> KeyMap {
+    fn keys() -> KeyMap<'static> {
         KeyMap {
             entries: vec![KeyValue {
-                key: Spanned::new("name".to_string(), Span::new(0, 4)),
-                value: Node::Scalar(ansilint_yaml::Scalar {
+                key: Spanned::new("name", Span::new(0, 4)),
+                value: Box::leak(Box::new(Node::Scalar(ansilint_yaml::Scalar {
                     value: "hello".to_string(),
                     style: ansilint_yaml::ScalarStyle::Plain,
                     span: Span::new(6, 11),
                     anchor: None,
-                }),
+                }))),
             }],
         }
     }
 
-    fn task(module: &str) -> Task {
+    fn task(module: &str) -> Task<'_> {
         Task {
             span: Span::new(0, 20),
             name: None,
             action: Action {
-                raw_key: Spanned::new(module.to_string(), Span::new(12, 18)),
+                raw_key: Spanned::new(module, Span::new(12, 18)),
                 module: ModuleRef {
                     requested: module.to_string(),
                     resolved_fqcn: None,

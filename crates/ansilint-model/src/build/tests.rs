@@ -11,10 +11,11 @@ use crate::model::{FileModel, TaskItem};
 use crate::FileKind;
 use ansilint_yaml::SourceFile;
 
-fn model(text: &str, kind: FileKind) -> crate::model::BuiltModel {
+/// The model borrows its documents; leaking them keeps test helpers simple.
+fn model(text: &str, kind: FileKind) -> crate::model::BuiltModel<'static> {
     let source = SourceFile::new("test.yml", text);
     let documents = ansilint_yaml::parse(&source).expect("valid YAML");
-    build(&documents, kind)
+    build(Box::leak(documents.into_boxed_slice()), kind)
 }
 
 #[test]
@@ -34,21 +35,14 @@ fn builds_plays_tasks_blocks_and_includes() {
         panic!("expected a task");
     };
     assert_eq!(first.action.module.requested, "ansible.builtin.copy");
-    assert_eq!(
-        first.name.as_ref().map(|name| name.value.as_str()),
-        Some("copy")
-    );
+    assert_eq!(first.name.as_ref().map(|name| name.value), Some("copy"));
     let TaskItem::Task(legacy) = &plays[0].tasks[1] else {
         panic!("expected a task");
     };
     assert!(legacy.action.module.is_legacy_action_form);
     assert_eq!(legacy.action.module.requested, "shell");
     assert_eq!(
-        legacy
-            .action
-            .free_form
-            .as_ref()
-            .map(|value| value.value.as_str()),
+        legacy.action.free_form.as_ref().map(|value| value.value),
         Some("echo hi")
     );
 }
@@ -109,10 +103,7 @@ fn parses_roles_and_legacy_action_mappings() {
     };
     assert_eq!(plays[0].roles.len(), 2);
     assert_eq!(
-        plays[0].roles[0]
-            .name
-            .as_ref()
-            .map(|name| name.value.as_str()),
+        plays[0].roles[0].name.as_ref().map(|name| name.value),
         Some("common")
     );
     let TaskItem::Task(task) = &plays[0].tasks[0] else {
@@ -127,11 +118,11 @@ fn parses_roles_and_legacy_action_mappings() {
 fn splits_legacy_action_strings() {
     assert_eq!(
         super::action::split_legacy_action("shell echo hi"),
-        ("shell".to_string(), Some("echo hi".to_string()))
+        ("shell", Some("echo hi"))
     );
     assert_eq!(
         super::action::split_legacy_action("  shell  "),
-        ("shell".to_string(), None)
+        ("shell", None)
     );
 }
 
@@ -165,7 +156,7 @@ fn builds_plays_from_every_document() {
     );
 }
 
-fn tasks(built: &crate::model::BuiltModel) -> Vec<&crate::model::Task> {
+fn tasks<'m>(built: &'m crate::model::BuiltModel<'_>) -> Vec<&'m crate::model::Task<'m>> {
     let FileModel::Tasks(items) = &built.model else {
         panic!("expected tasks");
     };

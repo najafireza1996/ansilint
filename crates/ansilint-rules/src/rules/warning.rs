@@ -37,7 +37,7 @@ impl Rule for WarningRule {
                 .keys
                 .entries
                 .iter()
-                .any(|entry| is_import_playbook(&entry.key.value))
+                .any(|entry| is_import_playbook(entry.key.value))
                 && play.pre_tasks.is_empty()
                 && play.tasks.is_empty()
                 && play.post_tasks.is_empty()

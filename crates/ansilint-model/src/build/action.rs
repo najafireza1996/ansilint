@@ -6,6 +6,9 @@ use super::Builder;
 use crate::keywords::is_task_keyword;
 use crate::model::{Action, ModuleRef, Spanned};
 
+/// Module name, free-form text and mapping arguments of an action.
+type ActionParts<'a> = (String, Option<Spanned<&'a str>>, Option<&'a Node>);
+
 impl<'a> Builder<'a> {
     /// The action of a task that only inherits it through `<<: *anchor` or
     /// `<<: [*a, *b]`. Own keys take precedence, so this runs only when the
@@ -57,18 +60,18 @@ impl<'a> Builder<'a> {
         found
     }
 
-    pub(super) fn action(&mut self, entry: &MappingEntry) -> Option<Action> {
+    pub(super) fn action(&mut self, entry: &'a MappingEntry) -> Option<Action<'a>> {
         let key = entry.key.as_str()?;
         let key_span = entry.key.span();
         let legacy = matches!(key, "action" | "local_action");
         let (requested, free_form, args) = if legacy {
             self.legacy_action(&entry.value)?
         } else {
-            let (_ignored, free_form, args) = Self::plain_action(&entry.value);
+            let (free_form, args) = Self::plain_action(&entry.value);
             (key.to_string(), free_form, args)
         };
         Some(Action {
-            raw_key: Spanned::new(key.to_string(), key_span),
+            raw_key: Spanned::new(key, key_span),
             module: ModuleRef {
                 requested,
                 resolved_fqcn: None,
@@ -79,29 +82,20 @@ impl<'a> Builder<'a> {
         })
     }
 
-    fn plain_action(value: &Node) -> (String, Option<Spanned<String>>, Option<Node>) {
+    fn plain_action(value: &'a Node) -> (Option<Spanned<&'a str>>, Option<&'a Node>) {
         match value {
-            Node::Scalar(scalar) => (
-                String::new(),
-                Some(Spanned::new(scalar.value.clone(), scalar.span)),
-                None,
-            ),
-            Node::Mapping(_) | Node::Sequence(_) | Node::Alias(_) => {
-                (String::new(), None, Some(value.clone()))
-            }
-            Node::Null { .. } => (String::new(), None, None),
+            Node::Scalar(scalar) => (Some(Spanned::new(scalar.value.as_str(), scalar.span)), None),
+            Node::Mapping(_) | Node::Sequence(_) | Node::Alias(_) => (None, Some(value)),
+            Node::Null { .. } => (None, None),
         }
     }
 
-    fn legacy_action(
-        &mut self,
-        value: &Node,
-    ) -> Option<(String, Option<Spanned<String>>, Option<Node>)> {
+    fn legacy_action(&mut self, value: &'a Node) -> Option<ActionParts<'a>> {
         match value {
             Node::Scalar(scalar) => {
                 let (module, rest) = split_legacy_action(&scalar.value);
                 let free_form = rest.map(|rest| Spanned::new(rest, scalar.span));
-                Some((module, free_form, None))
+                Some((module.to_string(), free_form, None))
             }
             Node::Mapping(mapping) => {
                 let module = mapping
@@ -109,7 +103,7 @@ impl<'a> Builder<'a> {
                     .and_then(Node::as_str)
                     .unwrap_or_default()
                     .to_string();
-                Some((module, None, Some(value.clone())))
+                Some((module, None, Some(value)))
             }
             _ => {
                 self.issue(value.span(), "legacy action needs a module name");
@@ -119,19 +113,19 @@ impl<'a> Builder<'a> {
     }
 }
 
-pub(super) fn split_legacy_action(value: &str) -> (String, Option<String>) {
+pub(super) fn split_legacy_action(value: &str) -> (&str, Option<&str>) {
     let trimmed = value.trim();
     let split = trimmed
         .char_indices()
         .find(|(_, character)| character.is_whitespace())
         .map(|(index, _)| index);
     let Some(split) = split else {
-        return (trimmed.to_string(), None);
+        return (trimmed, None);
     };
-    let module = trimmed.get(..split).unwrap_or(trimmed).to_string();
+    let module = trimmed.get(..split).unwrap_or(trimmed);
     let rest = trimmed
         .get(split..)
         .map(str::trim)
         .filter(|rest| !rest.is_empty());
-    (module, rest.map(str::to_string))
+    (module, rest)
 }

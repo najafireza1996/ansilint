@@ -51,6 +51,20 @@ throwaway timing test was not committed; recreate it from this description.
 | Linear scan over all entries | 179–191 ms |
 | Path index built once at parse time | 0.88–0.99 ms |
 
+## Model building without AST clones (H-C8, 2026-11-01)
+
+`ansilint_model::build` on one 778 KB playbook (100 plays x 50 tasks), release
+profile, Apple M1 / macOS 26.5 / Rust 1.99.1, counted with a throwaway counting
+global allocator outside the workspace (it needs `unsafe`).
+
+| Version | Allocations | Heap bytes | Time |
+|---|---|---|---|
+| Model cloned every key, value, `vars` and args subtree | 185 306 | 14.6 MB | 5.3–5.8 ms |
+| Model borrows `&'a Node` / `&'a str` from the documents | 11 006 | 3.7 MB | 1.1 ms |
+
+`cargo xtask bench` (500 small files) is unchanged at 12 ms best of 5: those
+files are I/O-bound, while the clone cost grows with file size.
+
 ## Current status
 
 The end-to-end `hyperfine` harness lands in Phase 4 (P4-T5). Until then, treat

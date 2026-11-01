@@ -16,7 +16,7 @@ pub struct FileCx<'a> {
     /// Detected kind.
     pub kind: FileKind,
     /// Ansible-aware model and model issues.
-    pub built: &'a BuiltModel,
+    pub built: &'a BuiltModel<'a>,
     /// Effective configuration.
     pub config: &'a Config,
 }
@@ -32,13 +32,13 @@ pub trait Rule: Send + Sync {
     fn check_file(&self, _cx: &FileCx<'_>, _out: &mut Vec<Finding>) {}
 
     /// Called for every play of a playbook.
-    fn check_play(&self, _cx: &FileCx<'_>, _play: &Play, _out: &mut Vec<Finding>) {}
+    fn check_play(&self, _cx: &FileCx<'_>, _play: &Play<'_>, _out: &mut Vec<Finding>) {}
 
     /// Called for every task, including handlers and includes.
-    fn check_task(&self, _cx: &FileCx<'_>, _task: &Task, _out: &mut Vec<Finding>) {}
+    fn check_task(&self, _cx: &FileCx<'_>, _task: &Task<'_>, _out: &mut Vec<Finding>) {}
 
     /// Called for every block before its children.
-    fn check_block(&self, _cx: &FileCx<'_>, _block: &Block, _out: &mut Vec<Finding>) {}
+    fn check_block(&self, _cx: &FileCx<'_>, _block: &Block<'_>, _out: &mut Vec<Finding>) {}
 
     /// Called for raw-text rules (`no-tabs`, future `yaml[*]`).
     fn check_text(&self, _cx: &FileCx<'_>, _out: &mut Vec<Finding>) {}

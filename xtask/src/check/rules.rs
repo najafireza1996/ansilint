@@ -61,6 +61,37 @@ fn check_rule_assets(root: &Path, id: &str) -> Result<Vec<String>> {
     Ok(failures)
 }
 
+/// Every relative link in `docs/rules/README.md` must point at an existing
+/// file (H-C16); generated links once used Rust file stems instead of ids.
+pub(super) fn check_rule_doc_links(root: &Path) -> Result<Vec<String>> {
+    let index = root.join("docs/rules/README.md");
+    if !index.is_file() {
+        return Ok(Vec::new());
+    }
+    let text = fs::read_to_string(&index)
+        .with_context(|| format!("failed to read {}", index.display()))?;
+    let mut failures = Vec::new();
+    for (number, line) in text.lines().enumerate() {
+        for target in line
+            .split("](")
+            .skip(1)
+            .filter_map(|rest| rest.split(')').next())
+        {
+            if target.contains("://") || target.starts_with('#') {
+                continue;
+            }
+            let path = target.split('#').next().unwrap_or(target);
+            if !root.join("docs/rules").join(path).is_file() {
+                failures.push(format!(
+                    "docs/rules/README.md:{}: link target `{target}` does not exist",
+                    number + 1
+                ));
+            }
+        }
+    }
+    Ok(failures)
+}
+
 pub(super) fn check_rule_id_matches(root: &Path) -> Result<Vec<String>> {
     let rules_dir = root.join("crates/ansilint-rules/src/rules");
     let mut failures = Vec::new();

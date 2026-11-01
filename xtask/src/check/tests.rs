@@ -9,6 +9,7 @@ use tempfile::TempDir;
 use super::dependencies::{check_dependency_edges, check_pure_crates};
 use super::hygiene::{check_forbidden_names, check_markers, check_panic_strategy};
 use super::load_architecture;
+use super::rules::check_rule_doc_links;
 
 fn write(path: &Path, contents: &str) {
     if let Some(parent) = path.parent() {
@@ -134,5 +135,21 @@ fn rejects_panic_abort_profiles() {
     assert!(
         failures.iter().any(|failure| failure.contains("panic")),
         "expected panic=abort failure, got {failures:?}"
+    );
+}
+
+#[test]
+fn rejects_broken_links_in_the_rule_index() {
+    let temp = workspace();
+    let root = temp.path();
+    write(&root.join("docs/rules/no-tabs.md"), "# no-tabs\n");
+    write(
+        &root.join("docs/rules/README.md"),
+        "| `no-tabs` | [no-tabs](no-tabs.md) |\n| `no-changed-when` | [x](no_changed_when.md) |\n",
+    );
+    let failures = check_rule_doc_links(root).expect("run link check");
+    assert!(
+        matches!(failures.as_slice(), [only] if only.contains("no_changed_when.md")),
+        "got {failures:?}"
     );
 }

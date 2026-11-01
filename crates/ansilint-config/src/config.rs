@@ -16,6 +16,21 @@ pub const CONFIG_FILE_NAMES: &[&str] = &[
     ".config/ansible-lint.yaml",
 ];
 
+/// Keys that parse and validate today but have no effect until the rule or
+/// feature that reads them lands; each one produces a notice (H-C2).
+const PENDING_KEYS: &[&str] = &[
+    "loop_var_prefix",
+    "max_block_depth",
+    "only_builtins_allow_collections",
+    "only_builtins_allow_modules",
+    "sarif_file",
+    "supported_ansible_also",
+    "task_name_prefix",
+    "var_naming_pattern",
+    "verbosity",
+    "write_list",
+];
+
 const IGNORED_KEYS: &[&str] = &[
     "rulesdir",
     "mock_modules",
@@ -121,6 +136,8 @@ pub struct ParsedConfig {
     pub ignored_keys: Vec<String>,
     /// Keys that are not recognised.
     pub unknown_keys: Vec<String>,
+    /// Valid keys that have no effect yet (see `docs/CONFIG.md`).
+    pub pending_keys: Vec<String>,
 }
 
 /// Explicit CLI overrides; lists extend and scalars replace.
@@ -178,7 +195,11 @@ impl Config {
                 ));
             };
             apply_key(&mut parsed, key, &entry.value)?;
+            if PENDING_KEYS.contains(&key) {
+                parsed.pending_keys.push(key.to_string());
+            }
         }
+        parsed.pending_keys.sort();
         parsed.ignored_keys.sort();
         parsed.unknown_keys.sort();
         Ok(parsed)
@@ -236,6 +257,7 @@ fn default_parsed() -> ParsedConfig {
         config: Config::default(),
         ignored_keys: Vec::new(),
         unknown_keys: Vec::new(),
+        pending_keys: Vec::new(),
     }
 }
 

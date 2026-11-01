@@ -251,6 +251,11 @@ fn load_config(path: Option<&Path>) -> Result<(Config, Vec<String>), EngineError
     for key in &parsed.ignored_keys {
         warnings.push(format!("configuration key `{key}` is accepted but ignored"));
     }
+    for key in &parsed.pending_keys {
+        warnings.push(format!(
+            "configuration key `{key}` is accepted but not implemented yet"
+        ));
+    }
     for key in &parsed.unknown_keys {
         warnings.push(format!("unknown configuration key `{key}`"));
     }

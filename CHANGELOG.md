@@ -9,6 +9,9 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- Configuration keys that are valid but not implemented yet (for example
+  `sarif_file`, `max_block_depth`) now print a notice instead of being silently
+  inert.
 - `-t/--tags` CLI flag; a `tags` selector that matches no rule now prints a
   notice instead of silently producing an empty report.
 - Content sniffing checks every top-level item in every document and recognises

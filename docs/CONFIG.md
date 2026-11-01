@@ -26,6 +26,13 @@ git repository:
 `only_builtins_allow_collections`, `only_builtins_allow_modules`, `write_list`,
 `offline`, `use_default_rules`, `supported_ansible_also`.
 
+Accepted and validated but **not implemented yet**, each with a notice so no
+key is silently inert: `verbosity`, `sarif_file`, `var_naming_pattern`,
+`loop_var_prefix`, `task_name_prefix`, `max_block_depth`,
+`only_builtins_allow_collections`, `only_builtins_allow_modules`, `write_list`,
+`supported_ansible_also`. Each takes effect with the rule or feature that reads
+it. `offline` is honored by design: linting never uses the network.
+
 Accepted but ignored, with a one-time notice (non-goals): `rulesdir`,
 `mock_modules`, `mock_roles`, `extra_vars`, `skip_action_validation`.
 

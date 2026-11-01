@@ -289,3 +289,18 @@ fn hundred_thousand_deep_nesting_is_a_parser_error_not_a_crash() {
     assert_eq!(result.findings[0].finding.tag.rule, "parser-error");
     assert!(result.findings[0].finding.message.contains("nesting depth"));
 }
+
+#[test]
+fn configuration_keys_without_an_effect_yet_produce_a_notice() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "sarif_file: out.sarif\nstrict: false\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(
+        result.warnings,
+        ["configuration key `sarif_file` is accepted but not implemented yet"]
+    );
+}

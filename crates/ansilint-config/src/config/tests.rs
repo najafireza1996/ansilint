@@ -100,3 +100,15 @@ fn rejects_invalid_structure_and_values() {
     assert!(Config::from_bytes("verbosity: 999\n").is_err());
     assert!(Config::from_bytes("profile: none\n").is_err());
 }
+
+#[test]
+fn reports_keys_that_are_accepted_but_not_implemented_yet() {
+    let parsed = Config::from_bytes(
+        "verbosity: 2\nskip_list: []\nmax_block_depth: 3\nsarif_file: out.sarif\noffline: true\n",
+    )
+    .expect("valid config");
+    assert_eq!(
+        parsed.pending_keys,
+        ["max_block_depth", "sarif_file", "verbosity"]
+    );
+}

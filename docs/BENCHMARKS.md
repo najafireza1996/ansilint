@@ -40,6 +40,17 @@ Determinism: output was byte-identical with `RAYON_NUM_THREADS=1` and the defaul
 thread pool on a 40-file fixture (20 warnings, 20 parser errors) in both `pep8`
 and `json` formats.
 
+## Ignore-file lookup (H-C7, 2026-11-01)
+
+`IgnoreFile::disposition` with 10 000 entries and 10 000 lookups (one per
+entry), release profile, three runs, Apple M1 / macOS 26.5 / Rust 1.99.1. The
+throwaway timing test was not committed; recreate it from this description.
+
+| Version | Time |
+|---|---|
+| Linear scan over all entries | 179–191 ms |
+| Path index built once at parse time | 0.88–0.99 ms |
+
 ## Current status
 
 The end-to-end `hyperfine` harness lands in Phase 4 (P4-T5). Until then, treat

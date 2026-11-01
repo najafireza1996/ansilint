@@ -1,5 +1,7 @@
 //! Parsing of `.ansible-lint-ignore` files.
 
+use std::collections::HashMap;
+
 use ansilint_core::Tag;
 use thiserror::Error;
 
@@ -53,6 +55,8 @@ impl IgnoreEntry {
 pub struct IgnoreFile {
     /// Entries in file order.
     pub entries: Vec<IgnoreEntry>,
+    /// Entry indexes by path, built once so lookups stay O(1) per finding (H-C7).
+    by_path: HashMap<String, Vec<usize>>,
 }
 
 impl IgnoreFile {
@@ -97,7 +101,11 @@ impl IgnoreFile {
                 line,
             });
         }
-        Ok(Self { entries })
+        let mut by_path: HashMap<String, Vec<usize>> = HashMap::new();
+        for (index, entry) in entries.iter().enumerate() {
+            by_path.entry(entry.path.clone()).or_default().push(index);
+        }
+        Ok(Self { entries, by_path })
     }
 
     /// Returns `Some(true)` for skip, `Some(false)` for downgrade, `None` if no
@@ -105,8 +113,9 @@ impl IgnoreFile {
     #[must_use]
     pub fn disposition(&self, path: &str, tag: &Tag) -> Option<bool> {
         let mut downgrade = false;
-        for entry in &self.entries {
-            if entry.path != path || !tag.matches(&entry.tag) {
+        let indexes = self.by_path.get(path).map_or(&[][..], Vec::as_slice);
+        for entry in indexes.iter().filter_map(|index| self.entries.get(*index)) {
+            if !tag.matches(&entry.tag) {
                 continue;
             }
             if entry.skip {

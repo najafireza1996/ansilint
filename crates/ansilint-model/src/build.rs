@@ -1,7 +1,9 @@
 //! Tolerant construction of the model from YAML documents.
 
+use std::collections::HashMap;
+
 use ansilint_core::Span;
-use ansilint_yaml::{Document, Mapping, MappingEntry, Node};
+use ansilint_yaml::{Alias, Document, Mapping, MappingEntry, Node};
 
 use crate::keywords::is_task_keyword;
 use crate::model::{
@@ -29,11 +31,28 @@ pub fn build(documents: &[Document], kind: FileKind) -> BuiltModel {
 }
 
 #[derive(Default)]
-struct Builder {
+struct Builder<'a> {
     issues: Vec<ModelIssue>,
+    /// Root of the document being built; aliases resolve within it.
+    root: Option<&'a Node>,
+    /// Anchor index of `root`, built on the first alias only.
+    anchors: Option<HashMap<usize, &'a Node>>,
 }
 
-impl Builder {
+impl<'a> Builder<'a> {
+    fn enter(&mut self, document: &'a Document) {
+        self.root = Some(&document.root);
+        self.anchors = None;
+    }
+
+    fn resolve(&mut self, alias: &Alias) -> Option<&'a Node> {
+        let root = self.root?;
+        self.anchors
+            .get_or_insert_with(|| root.anchors())
+            .get(&alias.anchor)
+            .copied()
+    }
+
     fn issue(&mut self, span: Span, message: impl Into<String>) {
         self.issues.push(ModelIssue {
             span,
@@ -41,13 +60,14 @@ impl Builder {
         });
     }
 
-    fn playbook(&mut self, documents: &[Document]) -> FileModel {
+    fn playbook(&mut self, documents: &'a [Document]) -> FileModel {
         let mut plays = Vec::new();
         let mut play_index = 0_usize;
         for document in documents {
             if document.root.is_null() {
                 continue;
             }
+            self.enter(document);
             let Some(sequence) = document.root.as_sequence() else {
                 self.issue(
                     document.root.span(),
@@ -65,7 +85,7 @@ impl Builder {
         FileModel::Playbook(plays)
     }
 
-    fn task_file(&mut self, documents: &[Document], in_handler: bool) -> Vec<TaskItem> {
+    fn task_file(&mut self, documents: &'a [Document], in_handler: bool) -> Vec<TaskItem> {
         let ctx = TaskCtx {
             in_handler,
             ..TaskCtx::default()
@@ -75,12 +95,13 @@ impl Builder {
             if document.root.is_null() {
                 continue;
             }
+            self.enter(document);
             items.extend(self.task_list(Some(&document.root), &ctx));
         }
         items
     }
 
-    fn play(&mut self, node: &Node, index: usize) -> Option<Play> {
+    fn play(&mut self, node: &'a Node, index: usize) -> Option<Play> {
         let Some(mapping) = node.as_mapping() else {
             self.issue(node.span(), "a play must be a mapping");
             return None;
@@ -107,7 +128,7 @@ impl Builder {
         })
     }
 
-    fn roles(&mut self, node: Option<&Node>) -> Vec<RoleRef> {
+    fn roles(&mut self, node: Option<&'a Node>) -> Vec<RoleRef> {
         let Some(node) = node else {
             return Vec::new();
         };
@@ -150,7 +171,7 @@ impl Builder {
         })
     }
 
-    fn task_list(&mut self, node: Option<&Node>, ctx: &TaskCtx) -> Vec<TaskItem> {
+    fn task_list(&mut self, node: Option<&'a Node>, ctx: &TaskCtx) -> Vec<TaskItem> {
         let Some(node) = node else {
             return Vec::new();
         };
@@ -167,9 +188,9 @@ impl Builder {
         items
     }
 
-    fn task_item(&mut self, node: &Node, ctx: &TaskCtx) -> Option<TaskItem> {
-        if node.as_alias().is_some() {
-            return None;
+    fn task_item(&mut self, node: &'a Node, ctx: &TaskCtx) -> Option<TaskItem> {
+        if let Some(alias) = node.as_alias() {
+            return self.aliased_task(node.span(), alias, ctx);
         }
         let Some(mapping) = node.as_mapping() else {
             self.issue(node.span(), "a task list item must be a mapping");
@@ -178,15 +199,31 @@ impl Builder {
         if mapping.get("block").is_some() {
             return Some(TaskItem::Block(self.block(node, mapping, ctx)));
         }
-        let task = self.task(node, mapping, ctx)?;
+        let task = self.task(node.span(), mapping, ctx)?;
+        Some(Self::wrap_task(task))
+    }
+
+    /// A task written as `- *anchor`; the span stays on the alias.
+    fn aliased_task(&mut self, span: Span, alias: &Alias, ctx: &TaskCtx) -> Option<TaskItem> {
+        let mapping = self.resolve(alias)?.as_mapping()?;
+        // Aliased blocks are not expanded: a block can alias itself or fan out
+        // through block/rescue/always, which would grow exponentially.
+        if mapping.get("block").is_some() {
+            return None;
+        }
+        let task = self.task(span, mapping, ctx)?;
+        Some(Self::wrap_task(task))
+    }
+
+    fn wrap_task(task: Task) -> TaskItem {
         if task.is_include() {
-            Some(TaskItem::IncludeImport(task))
+            TaskItem::IncludeImport(task)
         } else {
-            Some(TaskItem::Task(task))
+            TaskItem::Task(task)
         }
     }
 
-    fn block(&mut self, node: &Node, mapping: &Mapping, ctx: &TaskCtx) -> Block {
+    fn block(&mut self, node: &'a Node, mapping: &'a Mapping, ctx: &TaskCtx) -> Block {
         if ctx.block_depth >= MAX_BLOCK_DEPTH {
             self.issue(node.span(), "block nesting exceeds the supported depth");
             return Block {
@@ -212,28 +249,53 @@ impl Builder {
         }
     }
 
-    fn task(&mut self, node: &Node, mapping: &Mapping, ctx: &TaskCtx) -> Option<Task> {
-        let action_index = self.action_index(mapping);
-        let Some(action_index) = action_index else {
-            self.issue(node.span(), "a task has no action key");
-            return None;
+    fn task(&mut self, span: Span, mapping: &'a Mapping, ctx: &TaskCtx) -> Option<Task> {
+        let (own_index, entry) = match self.action_index(mapping) {
+            Some(index) => (Some(index), mapping.entries.get(index)?),
+            None => (None, self.merged_action(mapping)?),
         };
-        let entry = mapping.entries.get(action_index)?;
         let action = self.action(entry)?;
-        let keys = self.key_map_excluding(mapping, action_index);
-        let name = keys.get("name").and_then(Node::as_str).map(|name| {
-            Spanned::new(
-                name.to_string(),
-                keys.key_span("name").unwrap_or(node.span()),
-            )
-        });
+        let keys = self.key_map_excluding(mapping, own_index);
+        let name = keys
+            .get("name")
+            .and_then(Node::as_str)
+            .map(|name| Spanned::new(name.to_string(), keys.key_span("name").unwrap_or(span)));
         Some(Task {
-            span: node.span(),
+            span,
             name,
             action,
             keys,
             ctx: ctx.clone(),
         })
+    }
+
+    /// The action of a task that only inherits it through `<<: *anchor` or
+    /// `<<: [*a, *b]`. Own keys take precedence, so this runs only when the
+    /// task has no action of its own. One level deep: merges are not chased.
+    fn merged_action(&mut self, mapping: &Mapping) -> Option<&'a MappingEntry> {
+        let mut sources = Vec::new();
+        for entry in mapping.get_all("<<") {
+            match &entry.value {
+                Node::Alias(alias) => sources.push(alias.clone()),
+                Node::Sequence(sequence) => {
+                    sources.extend(sequence.items.iter().filter_map(Node::as_alias).cloned());
+                }
+                _ => {}
+            }
+        }
+        let found = sources.iter().find_map(|alias| {
+            let merged = self.resolve(alias)?.as_mapping()?;
+            merged.entries.iter().find(|entry| {
+                entry
+                    .key
+                    .as_str()
+                    .is_some_and(|key| key != "<<" && !is_task_keyword(key))
+            })
+        });
+        if found.is_none() {
+            self.issue(mapping.span, "a task has no action key");
+        }
+        found
     }
 
     fn action_index(&mut self, mapping: &Mapping) -> Option<usize> {
@@ -336,10 +398,10 @@ impl Builder {
         KeyMap { entries }
     }
 
-    fn key_map_excluding(&mut self, mapping: &Mapping, index: usize) -> KeyMap {
+    fn key_map_excluding(&mut self, mapping: &Mapping, index: Option<usize>) -> KeyMap {
         let mut entries = Vec::new();
         for (current, entry) in mapping.entries.iter().enumerate() {
-            if current == index {
+            if Some(current) == index {
                 continue;
             }
             let Some(key) = entry.key.as_str() else {

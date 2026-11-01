@@ -1,5 +1,6 @@
 //! The span-carrying YAML AST.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -180,6 +181,37 @@ impl Node {
     pub fn is_null(&self) -> bool {
         matches!(self, Self::Null { .. })
     }
+
+    /// Indexes every anchored node in this subtree by anchor id, so aliases
+    /// can be resolved without expanding them. Iterative: no recursion depth.
+    #[must_use]
+    pub fn anchors(&self) -> HashMap<usize, &Node> {
+        let mut table = HashMap::new();
+        let mut stack = vec![self];
+        while let Some(node) = stack.pop() {
+            let anchor = match node {
+                Self::Scalar(scalar) => scalar.anchor,
+                Self::Sequence(sequence) => {
+                    stack.extend(&sequence.items);
+                    sequence.anchor
+                }
+                Self::Mapping(mapping) => {
+                    stack.extend(
+                        mapping
+                            .entries
+                            .iter()
+                            .flat_map(|entry| [&entry.key, &entry.value]),
+                    );
+                    mapping.anchor
+                }
+                Self::Alias(_) | Self::Null { .. } => None,
+            };
+            if let Some(anchor) = anchor {
+                table.insert(anchor, node);
+            }
+        }
+        table
+    }
 }
 
 impl Mapping {
@@ -287,6 +319,25 @@ mod tests {
         assert!(alias.as_alias().is_some());
         assert_eq!(alias.span(), span());
         assert!(Node::Null { span: span() }.is_null());
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        reason = "tests use fixed fixtures"
+    )]
+    fn indexes_nested_anchors_for_alias_resolution() {
+        let source = SourceFile::new("a.yml", "a: &x {b: &y [1]}\nc: *x\nd: *y\n");
+        let documents = crate::parse(&source).expect("valid YAML");
+        let root = &documents[0].root;
+        let anchors = root.anchors();
+        assert_eq!(anchors.len(), 2);
+        let mapping = root.as_mapping().expect("mapping");
+        let x = mapping.get("c").and_then(Node::as_alias).expect("alias");
+        let y = mapping.get("d").and_then(Node::as_alias).expect("alias");
+        assert!(anchors[&x.anchor].as_mapping().is_some());
+        assert!(anchors[&y.anchor].as_sequence().is_some());
     }
 
     #[test]

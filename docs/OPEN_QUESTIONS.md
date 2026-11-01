@@ -33,6 +33,7 @@ them.
 | 1 | YAML parser is `saphyr-parser` 0.2.2 (YAML 1.2, byte spans, multi-doc, anchors/aliases as ids). Comments are scanned line-by-line because the parser does not emit them. | <https://docs.rs/saphyr-parser/0.2.2/> and ADR 0001 | 2026-10-23 |
 | 7 | Message policy: tags and profiles verbatim; messages verbatim when verified against a real `ansible-lint` run, otherwise documented per rule. | `docs/COMPAT_POLICY.md`, ansible-lint 26.10.1 runs on two public repos | 2026-10-23 |
 | 11a | MSRV is Rust 1.85 with edition 2021; CI runs a dedicated MSRV job. | Internal decision, P0-T2 | 2026-10-23 |
+| 16 | Task keywords are the "Task" list of the Playbook Keywords reference, copied verbatim into `data/task_keywords.txt`. `action`/`local_action` carry the action; `with_<lookup_plugin>` is any `with_` prefix. `listen` is a handler keyword documented elsewhere. | <https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html> | 2026-11-01 |
 
 ## How to resolve an item
 

@@ -1,3 +1,8 @@
+# Task keywords, copied verbatim from the "Task" section of the official
+# Playbook Keywords reference (do not edit by hand; re-copy from the page):
+# https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html
+# Retrieved: 2026-11-01
+action
 any_errors_fatal
 args
 async
@@ -19,7 +24,7 @@ environment
 failed_when
 ignore_errors
 ignore_unreachable
-listen
+local_action
 loop
 loop_control
 module_defaults
@@ -38,18 +43,4 @@ timeout
 until
 vars
 when
-with_cartesian
-with_dict
-with_fileglob
-with_first_found
-with_flattened
-with_indexed_items
-with_ini
-with_inventory_hostnames
-with_items
-with_lines
-with_nested
-with_random_choice
-with_sequence
-with_subelements
-with_together
+with_<lookup_plugin>

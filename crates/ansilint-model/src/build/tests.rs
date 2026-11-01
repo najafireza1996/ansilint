@@ -165,6 +165,63 @@ fn builds_plays_from_every_document() {
     );
 }
 
+fn tasks(built: &crate::model::BuiltModel) -> Vec<&crate::model::Task> {
+    let FileModel::Tasks(items) = &built.model else {
+        panic!("expected tasks");
+    };
+    items
+        .iter()
+        .filter_map(|item| match item {
+            TaskItem::Task(task) | TaskItem::IncludeImport(task) => Some(task),
+            TaskItem::Block(_) => None,
+        })
+        .collect()
+}
+
+#[test]
+fn resolves_an_alias_used_as_a_task() {
+    let built = model(
+        "- &base\n  name: base\n  ansible.builtin.debug: {msg: hi}\n- *base\n",
+        FileKind::Tasks,
+    );
+    assert!(built.issues.is_empty(), "issues: {:?}", built.issues);
+    let found = tasks(&built);
+    assert_eq!(found.len(), 2);
+    assert_eq!(found[1].action.module.requested, "ansible.builtin.debug");
+}
+
+#[test]
+fn finds_the_action_through_a_merge_key() {
+    let built = model(
+        "- &base\n  name: base\n  ansible.builtin.debug: {msg: hi}\n- <<: *base\n  name: child\n- <<: [*base]\n  name: listed\n",
+        FileKind::Tasks,
+    );
+    assert!(built.issues.is_empty(), "issues: {:?}", built.issues);
+    let found = tasks(&built);
+    assert_eq!(found.len(), 3);
+    assert_eq!(found[1].action.module.requested, "ansible.builtin.debug");
+    assert_eq!(found[2].action.module.requested, "ansible.builtin.debug");
+}
+
+#[test]
+fn accepts_an_alias_as_module_arguments() {
+    let built = model(
+        "- name: anchor\n  ansible.builtin.copy: &args {src: a, dest: b}\n- name: reuse\n  ansible.builtin.copy: *args\n",
+        FileKind::Tasks,
+    );
+    assert!(built.issues.is_empty(), "issues: {:?}", built.issues);
+    assert_eq!(tasks(&built).len(), 2);
+}
+
+#[test]
+fn treats_every_with_lookup_as_a_keyword() {
+    let built = model(
+        "- name: env loop\n  ansible.builtin.debug: {msg: x}\n  with_env: [HOME]\n- name: fqcn lookup\n  ansible.builtin.debug: {msg: x}\n  with_community.general.random_words: 1\n",
+        FileKind::Tasks,
+    );
+    assert!(built.issues.is_empty(), "issues: {:?}", built.issues);
+}
+
 #[test]
 fn does_not_mistake_merge_keys_or_any_errors_fatal_for_actions() {
     let built = model(

@@ -1,10 +1,14 @@
 //! The task-keyword table used to discover a task's action key.
 //!
-//! The list is checked in twice on purpose: as a sorted constant for O(log n)
-//! lookups and as `data/task_keywords.txt` so contributors can review additions
-//! without reading Rust. A unit test keeps them identical.
+//! `data/task_keywords.txt` is a verbatim copy of the official Playbook
+//! Keywords reference (Task section). Tests fail when a documented keyword is
+//! not recognised here, or when this table holds an undocumented one.
 
 /// Keys that are task keywords, not module names. Sorted.
+///
+/// Excludes the documented action carriers `action`/`local_action` (handled by
+/// the builder) and `with_<lookup_plugin>` (matched as a prefix); adds the
+/// handler keyword `listen`.
 pub const TASK_KEYWORDS: &[&str] = &[
     "any_errors_fatal",
     "args",
@@ -46,27 +50,12 @@ pub const TASK_KEYWORDS: &[&str] = &[
     "until",
     "vars",
     "when",
-    "with_cartesian",
-    "with_dict",
-    "with_fileglob",
-    "with_first_found",
-    "with_flattened",
-    "with_indexed_items",
-    "with_ini",
-    "with_inventory_hostnames",
-    "with_items",
-    "with_lines",
-    "with_nested",
-    "with_random_choice",
-    "with_sequence",
-    "with_subelements",
-    "with_together",
 ];
 
 /// Returns `true` when `key` is a task keyword rather than a module name.
 #[must_use]
 pub fn is_task_keyword(key: &str) -> bool {
-    TASK_KEYWORDS.binary_search(&key).is_ok()
+    key.starts_with("with_") || TASK_KEYWORDS.binary_search(&key).is_ok()
 }
 
 /// Action keys handled as legacy forms or includes rather than plain modules.
@@ -94,7 +83,19 @@ mod tests {
 
     use super::{is_include_action, is_task_keyword, TASK_KEYWORDS};
 
-    const CHECKED_IN: &str = include_str!("../../../data/task_keywords.txt");
+    const DOCUMENTED: &str = include_str!("../../../data/task_keywords.txt");
+    /// Documented keywords that carry the action; the builder handles them.
+    const ACTION_CARRIERS: &[&str] = &["action", "local_action"];
+    /// Valid on handlers, documented outside the Playbook Keywords page.
+    const HANDLER_ONLY: &[&str] = &["listen"];
+
+    fn documented() -> Vec<&'static str> {
+        DOCUMENTED
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect()
+    }
 
     #[test]
     fn keyword_table_is_sorted_and_unique() {
@@ -102,11 +103,38 @@ mod tests {
     }
 
     #[test]
-    fn keyword_table_matches_the_checked_in_list() {
-        let mut checked_in: Vec<&str> =
-            CHECKED_IN.lines().filter(|line| !line.is_empty()).collect();
-        checked_in.sort_unstable();
-        assert_eq!(TASK_KEYWORDS, checked_in.as_slice());
+    fn checked_in_list_records_its_source_and_date() {
+        assert!(DOCUMENTED.contains("https://docs.ansible.com/"));
+        assert!(DOCUMENTED.contains("Retrieved: "));
+    }
+
+    #[test]
+    fn every_documented_task_keyword_is_recognised() {
+        let missing: Vec<&str> = documented()
+            .into_iter()
+            .filter(|keyword| !ACTION_CARRIERS.contains(keyword))
+            .filter(|keyword| match keyword.strip_suffix("<lookup_plugin>") {
+                Some(prefix) => {
+                    !is_task_keyword(&format!("{prefix}env"))
+                        || !is_task_keyword(&format!("{prefix}community.general.random_words"))
+                }
+                None => !is_task_keyword(keyword),
+            })
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "documented but unrecognised: {missing:?}"
+        );
+    }
+
+    #[test]
+    fn keyword_table_has_no_undocumented_entries() {
+        let documented = documented();
+        let extra: Vec<&&str> = TASK_KEYWORDS
+            .iter()
+            .filter(|keyword| !documented.contains(keyword) && !HANDLER_ONLY.contains(keyword))
+            .collect();
+        assert!(extra.is_empty(), "not in the documented list: {extra:?}");
     }
 
     #[test]

@@ -258,7 +258,7 @@ impl Comment {
 pub struct Document {
     /// Root node.
     pub root: Node,
-    /// Comments in the whole source, shared by every document.
+    /// Comments that belong to this document (by byte position), in source order.
     pub comments: Vec<Comment>,
     /// Span of an explicit `---` marker.
     pub doc_start: Option<Span>,

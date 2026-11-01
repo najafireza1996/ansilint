@@ -21,31 +21,40 @@ pub fn parse(source: &SourceFile) -> Result<Vec<Document>, YamlError> {
     let comments = scan_comments(text, &source.line_index);
     let mut parser = Parser::new_from_str(text);
     let mut documents = Vec::new();
+    let mut starts = Vec::new();
     while let Some(next) = parser.next_event() {
         let (event, span) = next.map_err(|error| YamlError::from_scan(&error))?;
         match event {
             Event::StreamStart => {}
             Event::StreamEnd => break,
             Event::DocumentStart(explicit) => {
-                documents.push(parse_document(
-                    text,
-                    &comments,
-                    &mut parser,
-                    explicit,
-                    span,
-                )?);
+                starts.push(to_span(span).start);
+                documents.push(parse_document(text, &mut parser, explicit, span)?);
             }
             other => {
                 return Err(YamlError::unexpected(to_span(span), &format!("{other:?}")));
             }
         }
     }
+    assign_comments(&mut documents, &starts, comments);
     Ok(documents)
+}
+
+/// Moves each comment into the document whose start precedes it; comments
+/// before the first document (a header) belong to the first one.
+fn assign_comments(documents: &mut [Document], starts: &[u32], comments: Vec<crate::Comment>) {
+    for comment in comments {
+        let owner = starts
+            .partition_point(|start| *start <= comment.span.start)
+            .saturating_sub(1);
+        if let Some(document) = documents.get_mut(owner) {
+            document.comments.push(comment);
+        }
+    }
 }
 
 fn parse_document<'input>(
     text: &'input str,
-    comments: &[crate::Comment],
     parser: &mut Parser<'input, StrInput<'input>>,
     explicit_start: bool,
     start_span: YamlSpan,
@@ -56,7 +65,7 @@ fn parse_document<'input>(
             root: Node::Null {
                 span: to_span(span),
             },
-            comments: comments.to_vec(),
+            comments: Vec::new(),
             doc_start: explicit_start.then(|| to_span(start_span)),
             doc_end: explicit_end(text, span),
             explicit_start,
@@ -72,7 +81,7 @@ fn parse_document<'input>(
     }
     Ok(Document {
         root,
-        comments: comments.to_vec(),
+        comments: Vec::new(),
         doc_start: explicit_start.then(|| to_span(start_span)),
         doc_end: explicit_end(text, end_span),
         explicit_start,
@@ -360,6 +369,25 @@ mod tests {
         assert_eq!(comments[0].content(), "note");
         assert_eq!(comments[1].line, 1);
         assert_eq!(comments[1].content(), "full");
+    }
+
+    fn contents(document: &Document) -> Vec<&str> {
+        document
+            .comments
+            .iter()
+            .map(crate::Comment::content)
+            .collect()
+    }
+
+    #[test]
+    fn each_document_owns_only_its_own_comments() {
+        let docs = documents(
+            "# header\n---\na: 1 # one\n...\n--- # start two\nb: 2\n# trailing\n---\n- 3 # three\n",
+        );
+        assert_eq!(docs.len(), 3);
+        assert_eq!(contents(&docs[0]), ["header", "one"]);
+        assert_eq!(contents(&docs[1]), ["start two", "trailing"]);
+        assert_eq!(contents(&docs[2]), ["three"]);
     }
 
     #[test]

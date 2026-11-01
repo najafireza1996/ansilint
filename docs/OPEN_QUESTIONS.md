@@ -8,7 +8,7 @@ code implements the conservative option (fewer findings) and marks the spot with
 
 | # | Question | Impact | Conservative default | Owner |
 |---|---|---|---|---|
-| 2 | Exact upstream exit codes, and the exact `json`/`codeclimate` field names | Phase 1 / Phase 4 | `0` no fatal findings, `2` fatal findings, `1` internal/usage error; `json` mirrors the documented upstream shapes where known | — |
+| 2 | Exact upstream `json`/`codeclimate` field names (exit codes: verified, see Verified #24) | Phase 4 | `json` mirrors the documented upstream shapes where known | — |
 | 3 | Default `kinds` glob list and its precedence | Phase 1 file discovery | An ordered glob list and content sniffing are implemented; the exact upstream list is still unverified | — |
 | 4 | Upstream embedded yamllint configuration (which checks, which options) | Phase 2 `yaml` rule | Implement only checks we can verify; never enable a check by guess | — |
 | 5 | Sub-tag lists and default severities for `fqcn`, `args`, `name`, `jinja`, `schema` | Phases 2–7 | Implement verified sub-tags only; unknown sub-tags are not emitted | — |
@@ -40,6 +40,7 @@ them.
 | 17 | `-t/--tags` keeps rules "whose id/tags match these values"; we also accept `rule[sub]`. Config key `tags` is not documented upstream; it shares the CLI semantics. | <https://docs.ansible.com/projects/lint/usage/> | 2026-11-01 |
 | 20 | `exclude_paths` entries resolve relative to the config file; `.cache/` is "implicit unless exclude_paths is defined in config"; config is never loaded from outside the git repository; the ignore file "should reside adjacent to the config file". | <https://docs.ansible.com/projects/lint/configuring/> | 2026-11-01 |
 | 22 | `kinds` entries are single-key `<kind>: <glob>` mappings (e.g. `- playbook: "**/examples/*.{yml,yaml}"`), prepended to the defaults; first match wins. | <https://raw.githubusercontent.com/ansible/ansible-lint/main/.ansible-lint> | 2026-11-01 |
+| 24 | Exit codes (`constants.RC`): 0 success (incl. warnings only), 2 violations, 3 invalid config, 4 lock timeout, 5 no files matched, 8 fixed violations, 130 Ctrl-C; `--strict` fails on any remaining match; usage errors come from plain `argparse` (exit 2). | <https://github.com/ansible/ansible-lint/blob/67a48717843c4d5d37681294cb5c9967781b0a31/src/ansiblelint/constants.py>, `app.py` `report_outcome`, `__main__.py` | 2026-11-01 |
 | 16 | Task keywords are the "Task" list of the Playbook Keywords reference, copied verbatim into `data/task_keywords.txt`. `action`/`local_action` carry the action; `with_<lookup_plugin>` is any `with_` prefix. `listen` is a handler keyword documented elsewhere. | <https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html> | 2026-11-01 |
 
 ## How to resolve an item

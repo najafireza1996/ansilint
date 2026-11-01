@@ -64,17 +64,23 @@ marked `VERIFY-UPSTREAM` (OPEN_QUESTIONS #2/#5).
 
 ## Exit codes
 
-Implemented in Phase 1, still to be verified byte-for-byte against upstream (see
-[OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)):
+Verified against upstream ansible-lint `constants.RC` and `app.report_outcome`
+at commit `67a48717843c4d5d37681294cb5c9967781b0a31` (2026-10-30); each code
+has a test in `crates/ansilint-cli/tests/cli.rs`.
 
-| Code | Meaning |
-|---|---|
-| `0` | No fatal findings |
-| `2` | Fatal findings present |
-| `1` | Internal or usage error |
+| Code | Meaning | Test |
+|---|---|---|
+| `0` | Success: no findings, or only warnings | `clean_files_exit_with_zero`, `warnings_pass_unless_strict` |
+| `2` | Violations found (errors; with `--strict`, warnings too) | `parser_errors_exit_with_two`, `warnings_pass_unless_strict` |
+| `2` | Usage error (upstream uses `argparse`, which exits 2), including an unknown `-f`/`-p` value | `usage_errors_exit_with_two_like_argparse` |
+| `3` | Invalid configuration: unreadable/missing config or ignore file, invalid value | `invalid_configuration_exits_with_three` |
+| `5` | No file was analyzed (upstream treats a run that linted nothing as a failure) | `no_files_matched_exits_with_five` |
+| `130` | Interrupted: default SIGINT termination, which shells report as 130 | `interrupt_terminates_with_sigint_which_shells_report_as_130` (Unix) |
+| `1` | Unexpected failure of ansilint itself outside rule isolation (e.g. an unreadable directory while walking) | `unexpected_io_failure_exits_with_one` (Unix) |
 
-`strict: true` turns warnings into failures. The verified upstream behavior will
-be recorded here and pinned by CLI tests before `v0.1.0`.
+Upstream's `4` (lock timeout) is never emitted; `8` (violations fixed) is
+reserved for `--fix` in Phase 8. Usage errors exited `1` before H-E1 (H-C12);
+that decision is reversed to match upstream.
 
 ## Environment
 

@@ -13,9 +13,9 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use ansilint_engine::{generate_ignore, lint, ConfigOverrides, LintOptions, Profile};
+use ansilint_engine::{generate_ignore, lint, ConfigOverrides, EngineError, LintOptions, Profile};
 use ansilint_output::Format;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 
 /// A fast, single-binary Ansible linter that needs no Python.
@@ -33,8 +33,8 @@ struct Cli {
     #[arg(short = 'c', long = "config-file", value_name = "FILE")]
     config_file: Option<PathBuf>,
     /// Minimum profile.
-    #[arg(short = 'p', long = "profile", value_name = "PROFILE")]
-    profile: Option<String>,
+    #[arg(short = 'p', long = "profile", value_name = "PROFILE", value_parser = parse_profile)]
+    profile: Option<Profile>,
     /// Tags to hide.
     #[arg(
         short = 'x',
@@ -74,9 +74,10 @@ struct Cli {
         short = 'f',
         long = "format",
         default_value = "pep8",
-        value_name = "FORMAT"
+        value_name = "FORMAT",
+        value_parser = parse_format
     )]
-    format: String,
+    format: Format,
     /// Accepted for compatibility; linting is always offline.
     #[arg(long = "offline")]
     offline: bool,
@@ -97,21 +98,34 @@ struct Cli {
     list_profiles: bool,
 }
 
+/// Exit codes, verified against upstream ansible-lint `constants.RC` at commit
+/// 67a48717843c4d5d37681294cb5c9967781b0a31 (H-E1). Usage errors exit 2 like
+/// upstream's `argparse`; Ctrl-C keeps the default SIGINT termination, which
+/// shells report as 130. `4` (lock timeout) and `8` (fixed) are not emitted.
+const VIOLATIONS_FOUND: u8 = 2;
+const INVALID_CONFIG: u8 = 3;
+const NO_FILES_MATCHED: u8 = 5;
+/// Our own unexpected failure outside rule isolation (upstream: a traceback).
+const INTERNAL_FAILURE: u8 = 1;
+
 fn main() -> ExitCode {
-    let cli = match Cli::try_parse() {
-        Ok(cli) => cli,
-        Err(error) => {
-            let code = u8::from(error.use_stderr());
-            let _ = error.print();
-            return ExitCode::from(code);
-        }
-    };
+    // clap exits 2 on usage errors and 0 for --help/--version.
+    let cli = Cli::parse();
     match run(&cli) {
         Ok(code) => code,
         Err(error) => {
             eprintln!("ansilint: {error:#}");
-            ExitCode::from(1)
+            ExitCode::from(failure_code(&error))
         }
+    }
+}
+
+fn failure_code(error: &anyhow::Error) -> u8 {
+    match error.downcast_ref::<EngineError>() {
+        Some(EngineError::Config(_) | EngineError::Load { .. } | EngineError::Ignore(_)) => {
+            INVALID_CONFIG
+        }
+        _ => INTERNAL_FAILURE,
     }
 }
 
@@ -128,8 +142,6 @@ fn run(cli: &Cli) -> Result<ExitCode> {
     if cli.list_rules || cli.list_tags || cli.list_profiles {
         return Ok(ExitCode::SUCCESS);
     }
-    let format =
-        Format::from_name(&cli.format).ok_or_else(|| anyhow!("unknown format `{}`", cli.format))?;
     let options = build_options(cli)?;
     let result = lint(&options)?;
     if cli.generate_ignore {
@@ -145,10 +157,11 @@ fn run(cli: &Cli) -> Result<ExitCode> {
     }
     let stdout = std::io::stdout();
     let mut lock = stdout.lock();
-    result.render(format, &mut lock)?;
-    let fatal = result.has_fatal(result.config.strict);
-    Ok(if fatal {
-        ExitCode::from(2)
+    result.render(cli.format, &mut lock)?;
+    Ok(if result.has_fatal(result.config.strict) {
+        ExitCode::from(VIOLATIONS_FOUND)
+    } else if result.files_linted == 0 {
+        ExitCode::from(NO_FILES_MATCHED)
     } else {
         ExitCode::SUCCESS
     })
@@ -161,7 +174,7 @@ fn build_options(cli: &Cli) -> Result<LintOptions> {
     options.config_path.clone_from(&cli.config_file);
     options.exclude_paths.clone_from(&cli.exclude);
     options.overrides = ConfigOverrides {
-        profile: cli.profile.as_deref().map(parse_profile).transpose()?,
+        profile: cli.profile,
         skip_list: cli.skip_list.clone(),
         warn_list: cli.warn_list.clone(),
         enable_list: cli.enable_list.clone(),
@@ -180,10 +193,14 @@ fn build_options(cli: &Cli) -> Result<LintOptions> {
     Ok(options)
 }
 
-fn parse_profile(value: &str) -> Result<Profile> {
+fn parse_profile(value: &str) -> Result<Profile, String> {
     value
         .parse()
-        .map_err(|()| anyhow!("unknown profile `{value}`"))
+        .map_err(|()| format!("unknown profile `{value}`"))
+}
+
+fn parse_format(value: &str) -> Result<Format, String> {
+    Format::from_name(value).ok_or_else(|| format!("unknown format `{value}`"))
 }
 
 fn ignore_path(result: &ansilint_engine::LintResult, cwd: &Path) -> PathBuf {

@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- Exit codes now match upstream: usage errors exit `2` (was `1`), invalid
+  configuration exits `3`, and a run that analyzes no file exits `5`.
 - An unknown kind name or invalid glob in `kinds` now prints a notice instead of
   being skipped silently.
 - `kinds` entries now use the upstream `- <kind>: <glob>` shape; configs that

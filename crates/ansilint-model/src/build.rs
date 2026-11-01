@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use ansilint_core::Span;
-use ansilint_yaml::{Alias, Document, Mapping, MappingEntry, Node};
+use ansilint_yaml::{Alias, Document, Mapping, MappingEntry, Node, MAX_NESTING_DEPTH};
 
 use crate::keywords::is_task_keyword;
 use crate::model::{
@@ -11,8 +11,6 @@ use crate::model::{
     Spanned, Task, TaskCtx, TaskItem,
 };
 use crate::FileKind;
-
-const MAX_BLOCK_DEPTH: u32 = 128;
 
 /// Builds a model. Malformed constructs become [`ModelIssue`]s, never errors.
 #[must_use]
@@ -224,7 +222,9 @@ impl<'a> Builder<'a> {
     }
 
     fn block(&mut self, node: &'a Node, mapping: &'a Mapping, ctx: &TaskCtx) -> Block {
-        if ctx.block_depth >= MAX_BLOCK_DEPTH {
+        // Unreachable for parsed input (each block level is two YAML levels),
+        // kept so the walk stays bounded for any `Node` tree.
+        if usize::try_from(ctx.block_depth).unwrap_or(usize::MAX) >= MAX_NESTING_DEPTH {
             self.issue(node.span(), "block nesting exceeds the supported depth");
             return Block {
                 span: node.span(),

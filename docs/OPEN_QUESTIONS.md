@@ -20,6 +20,7 @@ code implements the conservative option (fewer findings) and marks the spot with
 | 12 | GitHub organization, maintainer handles and required reviewers | Repository setup | `CODEOWNERS` uses `@ansilint/maintainers` until real handles exist | — |
 | 13 | Review the commit SHAs used to pin third-party GitHub Actions | CI hardening | Pinned to commit SHAs since Phase 0; review on every dependency update | — |
 | 14 | LSP stack (`tower-lsp-server` vs `lsp-server` + `lsp-types`) | Phase 9 | Decide by ADR in P9-T1 | — |
+| 18 | H-B3 asks for an explicit rayon worker stack size. Recursion is now capped at `MAX_NESTING_DEPTH` (128 levels, ~256 frames) and `Node::anchors` is iterative, so the default 2 MiB worker stack is ample; 100 000-deep inputs are tested on default stacks. A per-run custom pool would add thread spawns to every `lint()` call (hot for the LSP). | H-B3 | Not set; revisit if any recursion is added that is not bounded by `MAX_NESTING_DEPTH` | maintainer |
 | 15 | The line-oriented comment scanner can see a `#` inside a literal/folded block scalar as a comment | `# noqa` and future `yaml[comments]` | Only affects `# noqa` when the block contains `noqa`; replace with a scanner that tracks block scalars in Phase 2 | — |
 
 ## Verified

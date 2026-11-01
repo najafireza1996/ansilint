@@ -13,4 +13,4 @@ pub use ast::{
     SourceFile,
 };
 pub use error::YamlError;
-pub use parser::parse;
+pub use parser::{parse, MAX_NESTING_DEPTH};

@@ -276,3 +276,16 @@ fn tag_selectors_that_match_no_rule_produce_a_notice() {
         ["tag selector `no-such-tag` matches no rule"]
     );
 }
+
+#[test]
+fn hundred_thousand_deep_nesting_is_a_parser_error_not_a_crash() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("deep.yml"),
+        &format!("{}x\n", "- ".repeat(100_000)),
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.findings.len(), 1);
+    assert_eq!(result.findings[0].finding.tag.rule, "parser-error");
+    assert!(result.findings[0].finding.message.contains("nesting depth"));
+}

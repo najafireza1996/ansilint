@@ -9,7 +9,11 @@ use crate::ast::{
 use crate::comments::scan_comments;
 use crate::error::YamlError;
 
-const MAX_DEPTH: usize = 256;
+/// Maximum nesting of sequences and mappings. Deeper input is rejected with a
+/// spanned [`YamlError`] (reported as `parser-error`) instead of recursing
+/// further, so pathological files can never overflow the stack (H-B3). This
+/// is a safety limit; `max_block_depth` is the separate lint setting.
+pub const MAX_NESTING_DEPTH: usize = 128;
 
 /// Parses every YAML document in `source`.
 ///
@@ -104,10 +108,10 @@ fn parse_node<'input>(
     parser: &mut Parser<'input, StrInput<'input>>,
     depth: usize,
 ) -> Result<Node, YamlError> {
-    if depth >= MAX_DEPTH {
+    if depth >= MAX_NESTING_DEPTH {
         return Err(YamlError {
             span: to_span(span),
-            message: format!("nesting depth exceeds the supported limit ({MAX_DEPTH})"),
+            message: format!("nesting depth exceeds the supported limit ({MAX_NESTING_DEPTH})"),
         });
     }
     match event {
@@ -350,6 +354,41 @@ mod tests {
         assert!(docs[1].explicit_start);
         assert!(docs[0].doc_start.is_some());
         assert!(docs[1].doc_start.is_some());
+    }
+
+    fn nesting_error(text: String) -> YamlError {
+        parse(&SourceFile::new("deep.yml", text)).expect_err("deep nesting is rejected")
+    }
+
+    #[test]
+    fn accepts_nesting_up_to_the_documented_limit() {
+        let depth = crate::MAX_NESTING_DEPTH - 1;
+        assert!(parse(&SourceFile::new(
+            "ok.yml",
+            format!("{}x\n", "- ".repeat(depth))
+        ))
+        .is_ok());
+        let error = nesting_error(format!("{}x\n", "- ".repeat(depth + 2)));
+        assert!(error.message.contains("nesting depth"));
+    }
+
+    #[test]
+    fn rejects_hundred_thousand_deep_input_with_a_spanned_error() {
+        for text in [
+            format!("{}x\n", "- ".repeat(100_000)),
+            format!("{}{}\n", "[".repeat(100_000), "]".repeat(100_000)),
+            format!("{}1{}\n", "{a: ".repeat(100_000), "}".repeat(100_000)),
+        ] {
+            // Flow collections hit saphyr's own guard first; both are errors.
+            let error = nesting_error(text);
+            assert!(
+                error.message.contains("nesting depth")
+                    || error.message.contains("recursion limit"),
+                "{}",
+                error.message
+            );
+            assert!(error.span.start > 0);
+        }
     }
 
     #[test]

@@ -13,8 +13,13 @@ env:
 
 jobs:
   fuzz:
-    name: fuzz (yaml_parse)
+    # H-C11: every parser surface is fuzzed nightly, five minutes per target.
+    name: fuzz (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [yaml_parse, model, loader, config, ignore_file]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # stable
@@ -27,9 +32,6 @@ jobs:
       - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2
         with:
           tool: cargo-fuzz
-      - name: Fuzz the YAML parser for five minutes
+      - name: Fuzz ${{ matrix.target }} for five minutes
         working-directory: fuzz
-        run: cargo +nightly fuzz run --target x86_64-unknown-linux-gnu yaml_parse -- -max_total_time=300
-      - name: Fuzz the model builder for five minutes
-        working-directory: fuzz
-        run: cargo +nightly fuzz run --target x86_64-unknown-linux-gnu model -- -max_total_time=300
+        run: cargo +nightly fuzz run --target x86_64-unknown-linux-gnu ${{ matrix.target }} -- -max_total_time=300

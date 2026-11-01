@@ -1,0 +1,4 @@
+# comment
+playbooks/a.yml yaml[truthy]
+"my dir/b #1.yml" name skip  # why
+roles/x/tasks/main.yml fqcn

@@ -1,0 +1,8 @@
+profile: basic
+exclude_paths: [.cache, vendor/**]
+skip_list: [yaml]
+warn_list: ["name[casing]"]
+kinds:
+  - kind: playbook
+    glob: "playbooks/*.yml"
+verbosity: 1

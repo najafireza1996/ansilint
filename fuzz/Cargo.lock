@@ -3,6 +3,15 @@
 version = 4
 
 [[package]]
+name = "ansilint-config"
+version = "0.0.0"
+dependencies = [
+ "ansilint-core",
+ "ansilint-yaml",
+ "thiserror",
+]
+
+[[package]]
 name = "ansilint-core"
 version = "0.0.0"
 
@@ -10,6 +19,7 @@ version = "0.0.0"
 name = "ansilint-fuzz"
 version = "0.0.0"
 dependencies = [
+ "ansilint-config",
  "ansilint-model",
  "ansilint-yaml",
  "libfuzzer-sys",

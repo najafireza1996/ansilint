@@ -12,3 +12,9 @@
 !/fuzz/corpus/yaml_parse/seed.yml
 /fuzz/corpus/model/*
 !/fuzz/corpus/model/seed.yml
+/fuzz/corpus/loader/*
+!/fuzz/corpus/loader/seed.yml
+/fuzz/corpus/config/*
+!/fuzz/corpus/config/seed.yml
+/fuzz/corpus/ignore_file/*
+!/fuzz/corpus/ignore_file/seed.txt

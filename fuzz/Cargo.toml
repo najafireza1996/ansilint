@@ -11,6 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 ansilint-yaml = { path = "../crates/ansilint-yaml" }
 ansilint-model = { path = "../crates/ansilint-model" }
+ansilint-config = { path = "../crates/ansilint-config" }
 
 [[bin]]
 name = "yaml_parse"
@@ -22,6 +23,27 @@ bench = false
 [[bin]]
 name = "model"
 path = "fuzz_targets/model.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "loader"
+path = "fuzz_targets/loader.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "config"
+path = "fuzz_targets/config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ignore_file"
+path = "fuzz_targets/ignore_file.rs"
 test = false
 doc = false
 bench = false

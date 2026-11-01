@@ -128,7 +128,9 @@ fn to_u32(value: usize) -> u32 {
 mod tests {
     #![allow(
         clippy::expect_used,
-        reason = "tests use fixed fixtures and panic on broken assertions"
+        clippy::indexing_slicing,
+        clippy::naive_bytecount,
+        reason = "tests use fixed fixtures and panic on broken assertions; the reference stays naive on purpose"
     )]
 
     use super::{LineCol, LineIndex};
@@ -187,7 +189,80 @@ mod tests {
         assert_eq!(index.line_col(text, 99), LineCol { line: 2, col: 1 });
     }
 
+    fn mixed_terminator_strategy() -> impl Strategy<Value = String> {
+        proptest::collection::vec(
+            prop_oneof![
+                Just("\n"),
+                Just("\r\n"),
+                Just("\r"),
+                Just("é"),
+                Just("日"),
+                Just("😀"),
+                Just("a"),
+                Just(" "),
+            ],
+            0..60,
+        )
+        .prop_map(|pieces| pieces.concat())
+    }
+
+    /// Independent reference: the line is the number of `\n` before the
+    /// offset; the column counts characters from the line start up to the
+    /// offset, clamped to the line's content end (before `\r\n`/`\n`) and
+    /// floored to a character boundary.
+    fn reference(text: &str, offset: usize) -> LineCol {
+        let offset = offset.min(text.len());
+        let bytes = text.as_bytes();
+        let line_start = bytes[..offset]
+            .iter()
+            .rposition(|byte| *byte == b'\n')
+            .map_or(0, |index| index + 1);
+        let newline = bytes[line_start..]
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .map(|index| line_start + index);
+        let content_end = match newline {
+            Some(index) if index > line_start && bytes[index - 1] == b'\r' => index - 1,
+            Some(index) => index,
+            None => text.len(),
+        };
+        let mut limit = offset.min(content_end);
+        while !text.is_char_boundary(limit) {
+            limit -= 1;
+        }
+        let line = bytes[..line_start]
+            .iter()
+            .filter(|byte| **byte == b'\n')
+            .count();
+        LineCol {
+            line: u32::try_from(line + 1).expect("test line fits"),
+            col: u32::try_from(text[line_start..limit].chars().count() + 1)
+                .expect("test column fits"),
+        }
+    }
+
+    #[test]
+    fn reference_handles_the_named_edge_cases() {
+        let text = "a\r\nb😀c";
+        let index = LineIndex::new(text);
+        // At `\r`, at the `\n` of `\r\n`, inside the 4-byte emoji.
+        for offset in [1_u32, 2, 5, 6, 7] {
+            let expected = reference(text, usize::try_from(offset).expect("fits"));
+            assert_eq!(index.line_col(text, offset), expected, "offset {offset}");
+        }
+        assert_eq!(index.line_col(text, 6), LineCol { line: 2, col: 2 });
+    }
+
     proptest! {
+        #[test]
+        fn line_col_matches_the_reference_at_every_byte_offset(text in mixed_terminator_strategy()) {
+            let index = LineIndex::new(&text);
+            for offset in 0..=text.len() + 2 {
+                let at = u32::try_from(offset).expect("test offsets fit in u32");
+                prop_assert_eq!(index.line_col(&text, at), reference(&text, offset), "offset {}", offset);
+            }
+        }
+
         #[test]
         fn line_col_matches_a_naive_scan(text in text_strategy()) {
             let index = LineIndex::new(&text);

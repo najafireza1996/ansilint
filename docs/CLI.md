@@ -11,9 +11,10 @@ not drift.
 ansilint [OPTIONS] [PATHS]...
 ```
 
-With no paths, `ansilint` auto-detects Ansible content from the current directory
-(playbooks, roles, collections) and warns when it is not running from the project
-root.
+With no paths, `ansilint` walks the current directory and lints every `.yml` /
+`.yaml` file it finds (respecting `.gitignore` and `exclude_paths`). Upstream-style
+auto-detection of playbooks, roles and collections, with a warning when not run
+from the project root, is planned for Phase 3 (H-C13).
 
 ## Flags (target)
 

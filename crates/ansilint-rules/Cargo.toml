@@ -15,6 +15,11 @@ ansilint-yaml = { version = "0.0.0", path = "../ansilint-yaml" }
 ansilint-model = { version = "0.0.0", path = "../ansilint-model" }
 ansilint-config = { version = "0.0.0", path = "../ansilint-config" }
 
+[features]
+# Test-only: registers a rule that panics on marked files, so the release
+# binary's panic isolation can be tested end to end (H-B4). Never ship it.
+test-panic-rule = []
+
 [dev-dependencies]
 ansilint-testing = { version = "0.0.0", path = "../ansilint-testing" }
 

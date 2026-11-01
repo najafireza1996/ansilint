@@ -7,6 +7,8 @@
 compile_error!("ansilint requires panic=unwind; internal-error uses catch_unwind");
 
 mod meta;
+#[cfg(feature = "test-panic-rule")]
+mod panic_probe;
 mod registry;
 mod rule;
 mod rules;

@@ -39,6 +39,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Test
         run: cargo test --workspace --all-features
+      - name: Panic isolation (release profile)
+        # H-B4: the shipped profile must turn a panicking rule into internal-error.
+        run: cargo test --release -p ansilint-cli --features test-panic-rule --test panic_isolation
       - name: Documentation
         if: runner.os == 'Linux'
         env:

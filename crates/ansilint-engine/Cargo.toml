@@ -21,6 +21,10 @@ rayon.workspace = true
 globset.workspace = true
 thiserror.workspace = true
 
+[features]
+# Test-only; see ansilint-rules.
+test-panic-rule = ["ansilint-rules/test-panic-rule"]
+
 [dev-dependencies]
 tempfile.workspace = true
 

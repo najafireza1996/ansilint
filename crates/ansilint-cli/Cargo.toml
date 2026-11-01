@@ -19,6 +19,10 @@ ansilint-engine = { version = "0.0.0", path = "../ansilint-engine" }
 ansilint-output = { version = "0.0.0", path = "../ansilint-output" }
 clap.workspace = true
 
+[features]
+# Test-only; see ansilint-rules.
+test-panic-rule = ["ansilint-engine/test-panic-rule"]
+
 [dev-dependencies]
 assert_cmd.workspace = true
 tempfile.workspace = true

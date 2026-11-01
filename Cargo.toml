@@ -56,3 +56,9 @@ module_name_repetitions = "allow"
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+
+# Explicit on purpose (H-B4): `internal-error` relies on catch_unwind, so every
+# profile that builds a shipped binary must unwind. The rules crate also fails
+# to compile with the abort strategy.
+[profile.release]
+panic = "unwind"

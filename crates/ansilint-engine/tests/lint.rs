@@ -312,3 +312,37 @@ fn a_target_directory_is_linted_like_any_other() {
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
 }
+
+#[test]
+fn crlf_configuration_and_ignore_files_are_understood() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(&directory.path().join("other.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "exclude_paths:\r\n  - other.yml\r\n",
+    );
+    write(
+        &directory.path().join(".ansible-lint-ignore"),
+        "site.yml warning skip\r\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.files_linted, 1);
+    assert!(result.findings.is_empty());
+}
+
+#[test]
+fn configuration_files_go_through_the_shared_loader() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    fs::write(directory.path().join(".ansible-lint"), [0xFF, 0xFE, b'\n']).expect("write");
+    let error = lint(&options(directory.path())).expect_err("invalid UTF-8 config");
+    assert!(error.to_string().contains("not valid UTF-8"), "{error}");
+    assert!(error.to_string().contains(".ansible-lint"), "{error}");
+
+    fs::write(directory.path().join(".ansible-lint"), "skip_list: []\n").expect("write");
+    let mut small = options(directory.path());
+    small.max_file_bytes = 4;
+    let error = lint(&small).expect_err("oversized config");
+    assert!(error.to_string().contains("byte limit"), "{error}");
+}

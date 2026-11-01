@@ -132,11 +132,12 @@ impl LintResult {
 /// prevent a meaningful run. Per-file load and parse problems are findings.
 pub fn lint(options: &LintOptions) -> Result<LintResult, EngineError> {
     let project = discovery::discover_project(&options.cwd, options.config_path.as_deref());
-    let (mut config, mut warnings) = load_config(project.config_path.as_deref())?;
+    let (mut config, mut warnings) =
+        load_config(project.config_path.as_deref(), options.max_file_bytes)?;
     config = merge(&config, &options.overrides);
     warnings.extend(post::unmatched_tag_notices(&config.tags));
     let ignore_file_path = discover_ignore_file(options, &project);
-    let ignore = load_ignore_file(ignore_file_path.as_deref())?;
+    let ignore = load_ignore_file(ignore_file_path.as_deref(), options.max_file_bytes)?;
     let classifier = Classifier::new(&config.kinds);
     let excludes = ExcludeSet::new(
         &config,
@@ -241,12 +242,11 @@ fn parser_error_finding(error: &ansilint_yaml::YamlError) -> Finding {
     )
 }
 
-fn load_config(path: Option<&Path>) -> Result<(Config, Vec<String>), EngineError> {
+fn load_config(path: Option<&Path>, limit: u64) -> Result<(Config, Vec<String>), EngineError> {
     let Some(path) = path else {
         return Ok((Config::default(), Vec::new()));
     };
-    let text = read_to_string(path)?;
-    let parsed = Config::from_bytes(&text)?;
+    let parsed = Config::from_bytes(load_text(path, limit)?.as_str())?;
     let mut warnings = Vec::new();
     for key in &parsed.ignored_keys {
         warnings.push(format!("configuration key `{key}` is accepted but ignored"));
@@ -282,23 +282,20 @@ fn discover_ignore_file(options: &LintOptions, project: &Project) -> Option<Path
     None
 }
 
-fn load_ignore_file(path: Option<&Path>) -> Result<Option<IgnoreFile>, EngineError> {
+fn load_ignore_file(path: Option<&Path>, limit: u64) -> Result<Option<IgnoreFile>, EngineError> {
     let Some(path) = path else {
         return Ok(None);
     };
-    let text = read_to_string(path)?;
-    Ok(Some(IgnoreFile::parse(&text)?))
+    Ok(Some(IgnoreFile::parse(load_text(path, limit)?.as_str())?))
 }
 
-fn read_to_string(path: &Path) -> Result<String, EngineError> {
-    let mut text = std::fs::read_to_string(path).map_err(|source| EngineError::Read {
+/// Config and ignore files share the linted-file loader (H-C3): one place for
+/// BOM, CRLF, UTF-8 and size handling.
+fn load_text(path: &Path, limit: u64) -> Result<ansilint_yaml::SourceFile, EngineError> {
+    loader::load(path, limit).map_err(|failure| EngineError::Load {
         path: path.to_path_buf(),
-        source,
-    })?;
-    if let Some(stripped) = text.strip_prefix('\u{feff}') {
-        text = stripped.to_string();
-    }
-    Ok(text)
+        reason: failure.to_string(),
+    })
 }
 
 fn resolve_inputs(options: &LintOptions) -> Vec<PathBuf> {

@@ -9,14 +9,13 @@ use thiserror::Error;
 /// A failure that prevents linting from starting or completing.
 #[derive(Debug, Error)]
 pub enum EngineError {
-    /// Reading a file failed.
-    #[error("failed to read {path}: {source}")]
-    Read {
-        /// Path that could not be read.
+    /// A configuration or ignore file could not be loaded.
+    #[error("failed to load {path}: {reason}")]
+    Load {
+        /// Path that could not be loaded.
         path: PathBuf,
-        /// Underlying I/O error.
-        #[source]
-        source: io::Error,
+        /// Why loading failed.
+        reason: String,
     },
     /// Writing a file failed.
     #[error("failed to write {path}: {source}")]

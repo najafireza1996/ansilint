@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `--strict` now fails on any remaining finding, including `Info`, as upstream
+  does.
 - Default file kinds now follow upstream's ordered `DEFAULT_KINDS`: for example
   `playbooks/*.yml` and Molecule scenario files are playbooks, `defaults/` is
   `vars`, and `*` in kind globs no longer crosses directories. Upstream kind

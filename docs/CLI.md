@@ -71,7 +71,7 @@ has a test in `crates/ansilint-cli/tests/cli.rs`.
 | Code | Meaning | Test |
 |---|---|---|
 | `0` | Success: no findings, or only warnings | `clean_files_exit_with_zero`, `warnings_pass_unless_strict` |
-| `2` | Violations found (errors; with `--strict`, warnings too) | `parser_errors_exit_with_two`, `warnings_pass_unless_strict` |
+| `2` | Violations found: any error; with `--strict`, any remaining finding (warnings and `Info` too) | `parser_errors_exit_with_two`, `warnings_pass_unless_strict` |
 | `2` | Usage error (upstream uses `argparse`, which exits 2), including an unknown `-f`/`-p` value | `usage_errors_exit_with_two_like_argparse` |
 | `3` | Invalid configuration: unreadable/missing config or ignore file, invalid value | `invalid_configuration_exits_with_three` |
 | `5` | No file was analyzed (upstream treats a run that linted nothing as a failure) | `no_files_matched_exits_with_five` |

@@ -99,13 +99,16 @@ pub struct LintResult {
 }
 
 impl LintResult {
-    /// Returns `true` when the exit code should be non-zero.
+    /// Returns `true` when the exit code should be non-zero: any error, or
+    /// with `strict` any remaining finding at all, `Info` included (upstream
+    /// fails when `strict` and matches remain; `OPEN_QUESTIONS.md` Verified #24).
     #[must_use]
     pub fn has_fatal(&self, strict: bool) -> bool {
-        self.findings.iter().any(|positioned| {
-            positioned.finding.severity == Severity::Error
-                || (strict && positioned.finding.severity == Severity::Warning)
-        })
+        (strict && !self.findings.is_empty())
+            || self
+                .findings
+                .iter()
+                .any(|positioned| positioned.finding.severity == Severity::Error)
     }
 
     /// Renders findings in the selected format.

@@ -5,13 +5,14 @@
 
 mod discovery;
 mod error;
+mod ignore_files;
 mod loader;
 mod post;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use ansilint_config::{merge, Config, IgnoreEntry, IgnoreFile, IGNORE_FILE_NAMES};
+use ansilint_config::{merge, Config, IgnoreFile};
 use ansilint_core::{Finding, Severity, Span, Tag};
 use ansilint_model::build;
 use ansilint_output::{DisplayFinding, Format, OutputError};
@@ -22,6 +23,7 @@ use rayon::prelude::*;
 pub use ansilint_config::{ConfigOverrides, Profile};
 pub use ansilint_rules::{Rule, RuleMeta};
 pub use error::EngineError;
+pub use ignore_files::generate_ignore;
 pub use loader::DEFAULT_MAX_FILE_BYTES;
 
 /// Returns the rule registry for listings.
@@ -31,6 +33,7 @@ pub fn rules() -> &'static [&'static dyn Rule] {
 }
 
 use discovery::{Classifier, ExcludeSet, Project};
+use ignore_files::{discover_ignore_file, load_ignore_file};
 
 /// Options for one lint run.
 #[derive(Clone, Debug)]
@@ -182,47 +185,6 @@ pub fn lint(options: &LintOptions) -> Result<LintResult, EngineError> {
     })
 }
 
-/// Writes an ignore file from the current findings.
-///
-/// # Errors
-///
-/// Returns [`EngineError`] when the file cannot be written.
-pub fn generate_ignore(result: &LintResult, path: &Path) -> Result<(), EngineError> {
-    let mut lines = Vec::new();
-    for positioned in &result.findings {
-        let entry = IgnoreEntry {
-            path: positioned.finding.path.to_string_lossy().replace('\\', "/"),
-            tag: positioned.finding.tag.to_string(),
-            skip: false,
-            line: 0,
-        };
-        lines.push(format!(
-            "{}  # {}",
-            entry.to_line(),
-            positioned.finding.message.replace('\n', " ")
-        ));
-    }
-    lines.sort();
-    lines.dedup();
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent).map_err(|source| EngineError::Write {
-                path: parent.to_path_buf(),
-                source,
-            })?;
-        }
-    }
-    let contents = if lines.is_empty() {
-        String::new()
-    } else {
-        format!("{}\n", lines.join("\n"))
-    };
-    std::fs::write(path, contents).map_err(|source| EngineError::Write {
-        path: path.to_path_buf(),
-        source,
-    })
-}
-
 struct FileOutcome {
     findings: Vec<PositionedFinding>,
     warnings: Vec<String>,
@@ -266,33 +228,6 @@ fn load_config(path: Option<&Path>, limit: u64) -> Result<(Config, Vec<String>),
         warnings.push(format!("unknown configuration key `{key}`"));
     }
     Ok((parsed.config, warnings))
-}
-
-fn discover_ignore_file(options: &LintOptions, project: &Project) -> Option<PathBuf> {
-    if let Some(path) = &options.ignore_file {
-        return Some(path.clone());
-    }
-    let base = project
-        .config_path
-        .as_ref()
-        .and_then(|path| path.parent())
-        .unwrap_or(&project.root);
-    for name in IGNORE_FILE_NAMES {
-        for directory in [base, project.root.as_path()] {
-            let candidate = directory.join(name);
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
-    }
-    None
-}
-
-fn load_ignore_file(path: Option<&Path>, limit: u64) -> Result<Option<IgnoreFile>, EngineError> {
-    let Some(path) = path else {
-        return Ok(None);
-    };
-    Ok(Some(IgnoreFile::parse(load_text(path, limit)?.as_str())?))
 }
 
 /// Config and ignore files share the linted-file loader (H-C3): one place for

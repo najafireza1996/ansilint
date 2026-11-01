@@ -73,6 +73,9 @@ impl IgnoreFile {
                 continue;
             }
             let (path, rest) = split_path(line, content)?;
+            if path.is_empty() {
+                return Err(IgnoreError::new(line, "missing path"));
+            }
             let mut fields = rest
                 .split('#')
                 .next()
@@ -265,6 +268,14 @@ mod tests {
             let original = entry(&path, &tag, skip);
             proptest::prop_assert_eq!(round_trip(&original), original);
         }
+    }
+
+    #[test]
+    fn rejects_an_empty_quoted_path() {
+        // Found by the ignore_file fuzz target: `"""` parsed to an empty path
+        // whose rendered line could not be parsed back.
+        assert!(IgnoreFile::parse("\"\"\"\n").is_err());
+        assert!(IgnoreFile::parse("\"\" yaml\n").is_err());
     }
 
     #[test]

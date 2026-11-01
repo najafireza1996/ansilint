@@ -7,6 +7,12 @@ releases may change output formats, but every change is listed here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Content sniffing checks every top-level item in every document and recognises
+  `import_playbook`; a playbook made only of imports is no longer reported as
+  empty. Unmatched YAML is still never treated as a task file.
+
 ### Added
 
 - Phase 1: `Span`/`LineIndex` core types with property tests.

@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use ansilint_config::{Config, KindPattern, CONFIG_FILE_NAMES};
-use ansilint_model::FileKind;
+use ansilint_model::{is_import_playbook, FileKind};
 use ansilint_yaml::{Document, Node};
 use globset::{Glob, GlobMatcher};
 use ignore::WalkBuilder;
@@ -252,26 +252,37 @@ fn default_patterns() -> &'static [(FileKind, &'static str)] {
 
 /// Improves a path-only classification by sniffing the parsed content.
 ///
-/// Phase 1 only promotes playbooks (a top-level list item with `hosts`). It
-/// deliberately does not infer task files from arbitrary YAML lists, because
-/// that would lint unrelated YAML as Ansible content and create false positives.
+/// Only playbooks are promoted: a top-level list item, in any document, with
+/// `hosts` or an `import_playbook` key (H-A3). Task files are deliberately never
+/// inferred from arbitrary YAML lists: unknown is not Tasks, because linting
+/// unrelated YAML as Ansible content creates false positives.
 #[must_use]
 pub(crate) fn sniff(kind: FileKind, documents: &[Document]) -> FileKind {
     if !matches!(kind, FileKind::Yaml | FileKind::Unknown) {
         return kind;
     }
-    for document in documents {
-        let Some(sequence) = document.root.as_sequence() else {
-            continue;
-        };
-        let Some(first) = sequence.items.first().and_then(Node::as_mapping) else {
-            continue;
-        };
-        if first.get("hosts").is_some() {
-            return FileKind::Playbook;
-        }
+    let is_play = |mapping: &ansilint_yaml::Mapping| {
+        mapping.entries.iter().any(|entry| {
+            entry
+                .key
+                .as_str()
+                .is_some_and(|key| key == "hosts" || is_import_playbook(key))
+        })
+    };
+    let found = documents.iter().any(|document| {
+        document.root.as_sequence().is_some_and(|sequence| {
+            sequence
+                .items
+                .iter()
+                .filter_map(Node::as_mapping)
+                .any(is_play)
+        })
+    });
+    if found {
+        FileKind::Playbook
+    } else {
+        kind
     }
-    kind
 }
 
 /// Makes a path relative to the project root, using forward slashes.
@@ -336,6 +347,39 @@ mod tests {
             classifier.classify(root, &root.join("roles/x/Tasks/main.yml")),
             FileKind::Yaml
         );
+    }
+
+    fn sniffed(text: &str) -> FileKind {
+        let source = ansilint_yaml::SourceFile::new("x.yml", text);
+        let documents = ansilint_yaml::parse(&source).expect("valid YAML");
+        super::sniff(FileKind::Yaml, &documents)
+    }
+
+    #[test]
+    fn sniffs_playbooks_from_any_item_and_document() {
+        assert_eq!(
+            sniffed("- import_playbook: a.yml\n- hosts: all\n"),
+            FileKind::Playbook
+        );
+        assert_eq!(
+            sniffed("- import_playbook: a.yml\n- ansible.builtin.import_playbook: b.yml\n"),
+            FileKind::Playbook
+        );
+        assert_eq!(
+            sniffed("---\nkey: 1\n---\n- hosts: all\n"),
+            FileKind::Playbook
+        );
+    }
+
+    #[test]
+    fn never_sniffs_generic_yaml_as_ansible() {
+        assert_eq!(sniffed("- name: a\n  image: nginx\n"), FileKind::Yaml);
+        assert_eq!(
+            sniffed("services:\n  web:\n    image: nginx\n"),
+            FileKind::Yaml
+        );
+        assert_eq!(sniffed("- name: x\n  shell: echo\n"), FileKind::Yaml);
+        assert_eq!(sniffed(""), FileKind::Yaml);
     }
 
     #[test]

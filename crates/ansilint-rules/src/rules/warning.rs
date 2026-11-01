@@ -1,7 +1,7 @@
 //! The upstream `warning` meta-rule for non-fatal notices.
 
 use ansilint_core::{Finding, Severity, Span, Tag};
-use ansilint_model::FileKind;
+use ansilint_model::{is_import_playbook, FileKind};
 
 use crate::meta::Tier;
 use crate::rule::{FileCx, Rule};
@@ -33,7 +33,12 @@ impl Rule for WarningRule {
         }
         let plays = cx.built.model.plays();
         let empty = plays.iter().all(|play| {
-            play.pre_tasks.is_empty()
+            !play
+                .keys
+                .entries
+                .iter()
+                .any(|entry| is_import_playbook(&entry.key.value))
+                && play.pre_tasks.is_empty()
                 && play.tasks.is_empty()
                 && play.post_tasks.is_empty()
                 && play.handlers.is_empty()

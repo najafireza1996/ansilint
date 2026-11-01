@@ -10,7 +10,7 @@ mod model;
 
 pub use build::build;
 pub use file_kind::FileKind;
-pub use keywords::{is_include_action, is_task_keyword, TASK_KEYWORDS};
+pub use keywords::{is_import_playbook, is_include_action, is_task_keyword, TASK_KEYWORDS};
 pub use model::{
     Action, Block, BuiltModel, FileModel, KeyMap, KeyValue, ModelIssue, ModuleRef, Play, RoleRef,
     Spanned, Task, TaskCtx, TaskItem,

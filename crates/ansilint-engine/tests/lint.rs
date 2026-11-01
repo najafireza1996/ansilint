@@ -163,6 +163,17 @@ fn does_not_treat_generic_yaml_lists_as_tasks() {
 }
 
 #[test]
+fn a_playbook_of_imports_is_not_empty() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("site.yml"),
+        "- import_playbook: web.yml\n- ansible.builtin.import_playbook: db.yml\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(result.findings.is_empty());
+}
+
+#[test]
 fn model_issues_are_not_surfaced_as_warnings() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(

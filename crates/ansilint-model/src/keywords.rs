@@ -73,6 +73,15 @@ pub fn is_include_action(module: &str) -> bool {
     )
 }
 
+/// Returns `true` for a playbook-level `import_playbook` key, short or FQCN.
+#[must_use]
+pub fn is_import_playbook(key: &str) -> bool {
+    matches!(
+        key,
+        "import_playbook" | "ansible.builtin.import_playbook" | "ansible.legacy.import_playbook"
+    )
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(

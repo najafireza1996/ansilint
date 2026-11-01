@@ -397,3 +397,17 @@ fn run_rules(cx: &FileCx<'_>, active_rules: &[&dyn Rule]) -> Vec<Finding> {
     // (Phase 6); surfacing them would create false positives on valid YAML.
     ansilint_rules::run(active_rules, cx)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::matches_pattern;
+
+    #[test]
+    fn enable_list_sub_tags_map_to_the_owning_rule() {
+        let enable = ["name[prefix]".to_string(), "no-same-owner".to_string()];
+        assert!(matches_pattern(&enable, "name"));
+        assert!(matches_pattern(&enable, "no-same-owner"));
+        assert!(!matches_pattern(&enable, "name-prefix"));
+        assert!(!matches_pattern(&enable, "no-same"));
+    }
+}

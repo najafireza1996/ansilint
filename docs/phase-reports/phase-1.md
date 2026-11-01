@@ -70,16 +70,29 @@ behavior was already correct on `main`, the test is a new guard and the
 | H-D6 `enable_list` `rule[sub]` | `tests::enable_list_sub_tags_map_to_the_owning_rule` | `52f107c` | Mapping pre-existed; sub-tag filtering deferred (OPEN #23) |
 | H-D7 honest README/parity | `check::tests::parity_statuses_must_match_rule_files`; `docs/PARITY.md` reads 4 / 52 | `cb46737` | Yes |
 
+### Batch E (verification follow-ups)
+
+Upstream pinned at ansible-lint `67a48717843c4d5d37681294cb5c9967781b0a31`
+(2026-10-30).
+
+| Task | Commit | Test name(s) / command | Failing output before fix | Result after fix |
+|---|---|---|---|---|
+| H-E1 exit codes | `7fd2650` | `cli::clean_files_exit_with_zero`, `usage_errors_exit_with_two_like_argparse`, `invalid_configuration_exits_with_three`, `no_files_matched_exits_with_five`, `unexpected_io_failure_exits_with_one`, `interrupt_terminates_with_sigint_which_shells_report_as_130`, `parser_errors_exit_with_two`, `warnings_pass_unless_strict` | `Unexpected return code, failed var == 3` / `code=1`; `failed var == 5` / `code=0`; `failed var == 2` / `code=1` | 16/16 CLI tests pass |
+| H-E2 default kinds | `8cef04b` | `discovery::tests::default_kinds_match_upstream_order_for_sample_paths` (43 paths), `default_kinds_file_is_pinned_and_complete` | 24 mismatches, e.g. `playbooks/site.yml: expected playbook, got yaml`, `roles/x/handlers/sub/main.yml: expected yaml, got handlers` | 0 mismatches; corpus still 0 findings |
+| H-E3 CODEOWNERS handle | — | — | — | **Not done:** needs the maintainer's GitHub handle |
+| H-E4 marker convention | `3916894` | `check::tests::verify_markers_must_name_an_open_question_row` | `got ["crates/a/src/lib.rs:4: TODO must be written as TODO(#<issue>)"]` (Q99 and bare marker not rejected) | All three violations rejected; `xtask check: ok` |
+
 ### Phase 1.5 acceptance
 
 | Criterion | Evidence |
 |---|---|
-| H-A4 corpus: 0 findings, part of `xtask ci` | `valid_corpus::valid_corpus_lints_with_zero_findings` (runs in `cargo test`) |
+| H-A4 corpus: 0 findings, part of `xtask ci` | ✅ `valid_corpus::valid_corpus_lints_with_zero_findings` (re-run after H-E2's reclassification) |
 | Each task has a regression test that fails before the fix | Table above (exceptions stated per row) |
 | 100 000-deep nesting and 10 MB pathological anchors: finding or clean refusal | `lint::hundred_thousand_deep_nesting_is_a_parser_error_not_a_crash`, `lint::billion_laughs_aliases_are_never_expanded`, `lint::ten_megabyte_input_is_a_clean_refusal` (`724b0c0`) |
-| Release-profile panic test on Linux, macOS, Windows | macOS: passes locally. Linux/Windows: **open**, CI step "Panic isolation (release profile)" |
-| CI matrix green before tagging `v0.0.1` | **Open** |
-| Second independent review (Appendix A.4) with zero open P0/P1 | **Open** |
+| Release-profile panic test on Linux, macOS, Windows | ❌ macOS passes locally; Linux/Windows need CI (step "Panic isolation (release profile)") |
+| CI matrix green before tagging `v0.0.1` | ❌ not run for this branch's latest commits |
+| Exit codes and default `kinds` equal verified upstream behavior with pinned-commit provenance (H-E1, H-E2) | ✅ `7fd2650`, `8cef04b`; SHA `67a4871` in `docs/CLI.md`, `data/default_kinds.toml`, OPEN_QUESTIONS Verified #24/#25 |
+| Second independent review (Appendix A.4) with zero open P0/P1 | ❌ not yet run |
 | This report exists | This file |
 
 ## Open gate items
@@ -88,7 +101,8 @@ behavior was already correct on `main`, the test is a new guard and the
    also covers the release-profile panic test on Linux and Windows).
 2. Run an independent review session (spec Appendix A.4) on
    `aae0499..HEAD` and resolve every P0/P1 finding.
-3. Have the maintainer review `docs/OPEN_QUESTIONS.md` items 18–23, which
+3. Have the maintainer review `docs/OPEN_QUESTIONS.md` items 18–23 and 26, which
    record decisions made during hardening.
+4. H-E3: replace `@ansilint/maintainers` in `CODEOWNERS` with a real handle.
 
 Only then may `v0.0.1` be tagged and Phase 2 start.

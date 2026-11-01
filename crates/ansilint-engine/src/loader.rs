@@ -46,9 +46,7 @@ pub(crate) fn load(path: &Path, limit: u64) -> Result<SourceFile, LoadFailure> {
     if size > limit {
         return Err(LoadFailure::TooLarge { size, limit });
     }
-    let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
-    let text = std::str::from_utf8(bytes).map_err(|_| LoadFailure::NotUtf8)?;
-    Ok(SourceFile::new(path.to_path_buf(), text.to_string()))
+    SourceFile::from_bytes(path, &bytes).ok_or(LoadFailure::NotUtf8)
 }
 
 #[cfg(test)]

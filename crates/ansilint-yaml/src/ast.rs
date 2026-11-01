@@ -30,6 +30,16 @@ impl SourceFile {
         }
     }
 
+    /// Decodes file bytes: strips one UTF-8 BOM, keeps CRLF, and returns `None`
+    /// when the rest is not valid UTF-8. The single decoding path for linted,
+    /// config and ignore files; pure so it can be fuzzed.
+    #[must_use]
+    pub fn from_bytes(path: impl Into<PathBuf>, bytes: &[u8]) -> Option<Self> {
+        let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
+        let text = std::str::from_utf8(bytes).ok()?;
+        Some(Self::new(path, text))
+    }
+
     /// Returns the source as a string slice.
     #[must_use]
     pub fn as_str(&self) -> &str {
@@ -338,6 +348,14 @@ mod tests {
         let y = mapping.get("d").and_then(Node::as_alias).expect("alias");
         assert!(anchors[&x.anchor].as_mapping().is_some());
         assert!(anchors[&y.anchor].as_sequence().is_some());
+    }
+
+    #[test]
+    #[allow(clippy::expect_used, reason = "tests use fixed fixtures")]
+    fn decodes_bytes_with_bom_and_crlf_and_rejects_invalid_utf8() {
+        let source = SourceFile::from_bytes("a.yml", b"\xEF\xBB\xBFa: 1\r\n").expect("valid");
+        assert_eq!(source.as_str(), "a: 1\r\n");
+        assert!(SourceFile::from_bytes("a.yml", &[0xFF, 0xFE]).is_none());
     }
 
     #[test]

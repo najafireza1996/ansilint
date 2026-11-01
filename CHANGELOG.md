@@ -9,6 +9,9 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `exclude_paths` now applies when the config is given as a relative path such
+  as `-c ../.ansible-lint`; files outside the project root are reported with
+  `../` instead of an absolute path.
 - `.cache/` is excluded implicitly only when `exclude_paths` is not configured,
   as upstream documents; `target/` is no longer excluded.
 - Configuration keys that are valid but not implemented yet (for example

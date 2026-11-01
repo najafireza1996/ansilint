@@ -55,6 +55,15 @@ Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
 "lists extend / scalars override", unknown and ignored keys, and the ignore-file
 grammar.
 
+## Paths
+
+All paths (`-c`, inputs, `exclude_paths`, `--exclude`) are made absolute and
+have `.`/`..` resolved lexically before use; symlinks are not resolved.
+Reported paths are relative to the project root (git root, else the current
+directory) with `/` separators; files outside the root get `../` segments and
+only a file on another Windows drive is shown absolute. Matching is
+case-sensitive on every platform, including Windows.
+
 ## `tags` (and `-t/--tags`)
 
 Upstream: "only check rules whose id/tags match these values"

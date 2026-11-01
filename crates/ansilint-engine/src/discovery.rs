@@ -1,7 +1,7 @@
 //! Project root, configuration discovery, file walking and kind detection.
 
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use ansilint_config::{Config, KindPattern, CONFIG_FILE_NAMES};
 use ansilint_model::{is_import_playbook, FileKind};
@@ -40,13 +40,7 @@ pub(crate) fn discover_project(cwd: &Path, explicit_config: Option<&Path>) -> Pr
     let git_root = find_git_root(cwd);
     let root = git_root.clone().unwrap_or_else(|| cwd.to_path_buf());
     let config_path = explicit_config
-        .map(|path| {
-            if path.is_relative() {
-                cwd.join(path)
-            } else {
-                path.to_path_buf()
-            }
-        })
+        .map(|path| normalize(cwd, path))
         .or_else(|| find_config(cwd, git_root.as_deref()));
     let config_base = config_path
         .as_ref()
@@ -115,7 +109,7 @@ impl ExcludeSet {
                     .push((base.to_path_buf(), glob.compile_matcher()));
             }
         } else {
-            self.add_prefix(base.join(path));
+            self.add_prefix(normalize(base, path));
         }
     }
 
@@ -288,10 +282,48 @@ pub(crate) fn sniff(kind: FileKind, documents: &[Document]) -> FileKind {
     }
 }
 
-/// Makes a path relative to the project root, using forward slashes.
+/// The one normal form for config bases, inputs and exclusions (H-C4):
+/// absolute against `cwd`, with `.` and `..` resolved lexically. Lexical on
+/// purpose: `canonicalize` follows symlinks and adds `\\?\` on Windows.
+#[must_use]
+pub(crate) fn normalize(cwd: &Path, path: &Path) -> PathBuf {
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    let mut normal = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                normal.pop();
+            }
+            other => normal.push(other),
+        }
+    }
+    normal
+}
+
+/// Makes a normalized path relative to the project root, using forward
+/// slashes. Paths outside the root get `../` segments; only a path with no
+/// common prefix at all (another Windows drive) stays absolute.
 #[must_use]
 pub(crate) fn relative_output_path(root: &Path, path: &Path) -> PathBuf {
-    let relative = path.strip_prefix(root).unwrap_or(path);
+    let common = root
+        .components()
+        .zip(path.components())
+        .take_while(|(left, right)| left == right)
+        .count();
+    let relative: PathBuf = if common == 0 {
+        path.to_path_buf()
+    } else {
+        root.components()
+            .skip(common)
+            .map(|_| Component::ParentDir)
+            .chain(path.components().skip(common))
+            .collect()
+    };
     PathBuf::from(relative.to_string_lossy().replace('\\', "/"))
 }
 
@@ -401,6 +433,32 @@ mod tests {
         let explicit = ExcludeSet::new(&configured, base, &[], base);
         assert!(!explicit.is_excluded(&cache));
         assert!(explicit.is_excluded(&base.join("vendor/y.yml")));
+    }
+
+    #[test]
+    fn normalize_resolves_dots_lexically() {
+        let root = std::env::temp_dir();
+        assert_eq!(
+            super::normalize(&root, std::path::Path::new("a/./b/../c")),
+            root.join("a").join("c")
+        );
+        assert_eq!(
+            super::normalize(&root.join("work"), std::path::Path::new("../x.yml")),
+            root.join("x.yml")
+        );
+    }
+
+    #[test]
+    fn paths_outside_the_root_get_parent_segments() {
+        let base = std::env::temp_dir();
+        assert_eq!(
+            relative_output_path(&base.join("project"), &base.join("other").join("x.yml")),
+            std::path::PathBuf::from("../other/x.yml")
+        );
+        assert_eq!(
+            relative_output_path(&base.join("a").join("b"), &base.join("x.yml")),
+            std::path::PathBuf::from("../../x.yml")
+        );
     }
 
     #[test]

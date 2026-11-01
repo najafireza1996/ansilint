@@ -346,3 +346,37 @@ fn configuration_files_go_through_the_shared_loader() {
     let error = lint(&small).expect_err("oversized config");
     assert!(error.to_string().contains("byte limit"), "{error}");
 }
+
+#[test]
+fn relative_config_path_resolves_exclude_paths_from_the_config_location() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("lint.yml"),
+        "exclude_paths: [work/skip]\n",
+    );
+    write(&directory.path().join("work/site.yml"), "- hosts: all\n");
+    write(&directory.path().join("work/skip/bad.yml"), "a: [1,\n");
+    let mut options = LintOptions::new(directory.path().join("work"));
+    options.config_path = Some("../lint.yml".into());
+    let result = lint(&options).expect("lint");
+    assert_eq!(result.files_linted, 1);
+    // No git repository: the project root is the cwd (`work/`).
+    assert_eq!(
+        result.findings[0].finding.path,
+        std::path::PathBuf::from("site.yml")
+    );
+}
+
+#[test]
+fn files_outside_the_project_root_are_reported_relative_not_absolute() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("project/.git/HEAD"), "ref: x\n");
+    write(&directory.path().join("outside/site.yml"), "- hosts: all\n");
+    let mut options = LintOptions::new(directory.path().join("project"));
+    options.paths = vec![directory.path().join("outside/site.yml")];
+    let result = lint(&options).expect("lint");
+    assert_eq!(
+        result.findings[0].finding.path,
+        std::path::PathBuf::from("../outside/site.yml")
+    );
+}

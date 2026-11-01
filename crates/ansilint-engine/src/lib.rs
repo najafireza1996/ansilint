@@ -305,13 +305,7 @@ fn resolve_inputs(options: &LintOptions) -> Vec<PathBuf> {
     options
         .paths
         .iter()
-        .map(|path| {
-            if path.is_absolute() {
-                path.clone()
-            } else {
-                options.cwd.join(path)
-            }
-        })
+        .map(|path| discovery::normalize(&options.cwd, path))
         .collect()
 }
 

@@ -1,6 +1,6 @@
 # 0002. Phase 1 dependencies
 
-Status: accepted
+Status: superseded by 0003
 
 ## Context
 

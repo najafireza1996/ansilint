@@ -174,6 +174,30 @@ fn model_issues_are_not_surfaced_as_warnings() {
 }
 
 #[test]
+fn model_issues_in_playbooks_and_handlers_never_become_findings() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("site.yml"),
+        "- hosts: all\n  tasks: not-a-list\n  roles: also-not-a-list\n  handlers:\n    - 42\n",
+    );
+    write(
+        &directory.path().join("roles/x/handlers/main.yml"),
+        "- just a string\n- name: no action here\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    let tags: Vec<String> = result
+        .findings
+        .iter()
+        .map(|positioned| positioned.finding.tag.to_string())
+        .collect();
+    assert_eq!(
+        tags,
+        ["warning"],
+        "only the empty-playbook warning may fire"
+    );
+}
+
+#[test]
 fn excludes_the_default_cache_directory() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(&directory.path().join("site.yml"), "- hosts: all\n");

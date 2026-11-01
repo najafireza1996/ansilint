@@ -389,7 +389,7 @@ fn process_file(
 }
 
 fn run_rules(cx: &FileCx<'_>, active_rules: &[&dyn Rule]) -> Vec<Finding> {
-    // Model issues are retained for the schema/parser-error phases; surfacing
-    // them as warnings today would create false positives on valid YAML.
+    // H-A1: model issues stay internal data until the `schema` rule exists
+    // (Phase 6); surfacing them would create false positives on valid YAML.
     ansilint_rules::run(active_rules, cx)
 }

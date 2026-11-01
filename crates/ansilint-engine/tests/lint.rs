@@ -380,3 +380,36 @@ fn files_outside_the_project_root_are_reported_relative_not_absolute() {
         std::path::PathBuf::from("../outside/site.yml")
     );
 }
+
+#[test]
+fn finds_the_ignore_file_in_every_documented_layout() {
+    // (config file or "", ignore file, cwd relative to the root)
+    let layouts = [
+        (".ansible-lint", ".ansible-lint-ignore", ""),
+        (".ansible-lint.yml", ".ansible-lint-ignore", ""),
+        (
+            ".config/ansible-lint.yml",
+            ".config/ansible-lint-ignore.txt",
+            "",
+        ),
+        (".config/ansible-lint.yaml", ".ansible-lint-ignore", ""),
+        ("", ".ansible-lint-ignore", ""),
+        ("", ".config/ansible-lint-ignore.txt", ""),
+        ("sub/.ansible-lint", "sub/.ansible-lint-ignore", "sub"),
+    ];
+    let found: Vec<bool> = layouts
+        .iter()
+        .map(|(config, ignore, cwd)| {
+            let directory = tempfile::tempdir().expect("temp dir");
+            let root = directory.path();
+            write(&root.join(".git/HEAD"), "ref: x\n");
+            if !config.is_empty() {
+                write(&root.join(config), "skip_list: []\n");
+            }
+            write(&root.join(ignore), "x.yml warning\n");
+            let result = lint(&LintOptions::new(root.join(cwd))).expect("lint");
+            result.ignore_file_path == Some(root.join(ignore))
+        })
+        .collect();
+    assert_eq!(found, [true; 7], "layouts: {layouts:?}");
+}

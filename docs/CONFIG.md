@@ -81,3 +81,8 @@ Discovery order: `ANSIBLE_LINT_IGNORE_FILE`, then `.ansible-lint-ignore` and
 Each line is `<path> <tag> [skip]`; a trailing `# comment` is ignored. Without
 `skip` the finding is downgraded to a warning. `--generate-ignore` rewrites the
 file from the current findings.
+
+Paths containing whitespace, `#`, `"` or `\` are written double-quoted with
+`\` escapes (`"my dir/a #1.yml" yaml`), so generated files always parse back to
+the same entries. Upstream does not define quoting; plain paths are unchanged
+and an unquoted path ends at whitespace or `#`.

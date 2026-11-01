@@ -11,7 +11,7 @@ mod post;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use ansilint_config::{merge, Config, IgnoreFile, IGNORE_FILE_NAMES};
+use ansilint_config::{merge, Config, IgnoreEntry, IgnoreFile, IGNORE_FILE_NAMES};
 use ansilint_core::{Finding, Severity, Span, Tag};
 use ansilint_model::build;
 use ansilint_output::{DisplayFinding, Format, OutputError};
@@ -189,10 +189,15 @@ pub fn lint(options: &LintOptions) -> Result<LintResult, EngineError> {
 pub fn generate_ignore(result: &LintResult, path: &Path) -> Result<(), EngineError> {
     let mut lines = Vec::new();
     for positioned in &result.findings {
+        let entry = IgnoreEntry {
+            path: positioned.finding.path.to_string_lossy().replace('\\', "/"),
+            tag: positioned.finding.tag.to_string(),
+            skip: false,
+            line: 0,
+        };
         lines.push(format!(
-            "{} {}  # {}",
-            positioned.finding.path.to_string_lossy().replace('\\', "/"),
-            positioned.finding.tag,
+            "{}  # {}",
+            entry.to_line(),
             positioned.finding.message.replace('\n', " ")
         ));
     }

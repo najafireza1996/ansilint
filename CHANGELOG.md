@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `--generate-ignore` quotes paths with spaces or `#`, so the generated file
+  parses back to the same entries.
 - `exclude_paths` now applies when the config is given as a relative path such
   as `-c ../.ansible-lint`; files outside the project root are reported with
   `../` instead of an absolute path.

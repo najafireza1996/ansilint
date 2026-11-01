@@ -14,5 +14,8 @@ ansilint-core = { version = "0.0.0", path = "../ansilint-core" }
 ansilint-yaml = { version = "0.0.0", path = "../ansilint-yaml" }
 thiserror.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+
 [lints]
 workspace = true

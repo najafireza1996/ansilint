@@ -413,3 +413,23 @@ fn finds_the_ignore_file_in_every_documented_layout() {
         .collect();
     assert_eq!(found, [true; 7], "layouts: {layouts:?}");
 }
+
+#[test]
+fn generated_ignore_files_round_trip_paths_with_spaces() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("my dir/site #1.yml"),
+        "- hosts: all\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    let ignore = directory.path().join(".ansible-lint-ignore");
+    generate_ignore(&result, &ignore).expect("generate ignore");
+    let parsed = ansilint_config::IgnoreFile::parse(&fs::read_to_string(&ignore).expect("read"))
+        .expect("generated file parses");
+    let paths: Vec<&str> = parsed
+        .entries
+        .iter()
+        .map(|entry| entry.path.as_str())
+        .collect();
+    assert_eq!(paths, ["my dir/site #1.yml"]);
+}

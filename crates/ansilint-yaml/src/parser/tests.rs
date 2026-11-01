@@ -139,7 +139,6 @@ fn preserves_anchor_ids_and_aliases() {
 #[test]
 fn empty_input_has_no_documents() {
     assert!(documents("").is_empty());
-    assert!(documents("# only a comment\n").is_empty());
 }
 
 #[test]
@@ -164,4 +163,15 @@ fn hashes_inside_block_and_multiline_quoted_scalars_are_not_comments() {
         "a: |\n  # not a comment\n  text\nb: >\n  # folded, not a comment\nc: \"x\n  # inside quotes\"\nd: 1 # real\n",
     );
     assert_eq!(contents(&docs[0]), ["real"]);
+}
+
+#[test]
+fn comments_in_a_stream_without_documents_are_kept() {
+    // A comment-only file has no YAML documents; its comments (e.g. `# noqa`)
+    // live on an implicit null document instead of being dropped.
+    let docs = documents("# noqa: warning\n# second\n");
+    assert_eq!(docs.len(), 1);
+    assert!(docs[0].root.is_null());
+    assert_eq!(contents(&docs[0]), ["noqa: warning", "second"]);
+    assert!(documents("").is_empty());
 }

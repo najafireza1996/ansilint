@@ -40,6 +40,20 @@ pub fn parse(source: &SourceFile) -> Result<Vec<Document>, YamlError> {
             }
         }
     }
+    if documents.is_empty() && !comments.is_empty() {
+        // A comment-only stream has no YAML document; keep its comments (and
+        // any `# noqa`) on one implicit null document.
+        starts.push(0);
+        documents.push(Document {
+            root: Node::Null {
+                span: Span::empty(0),
+            },
+            comments: Vec::new(),
+            doc_start: None,
+            doc_end: None,
+            explicit_start: false,
+        });
+    }
     assign_comments(&mut documents, &starts, comments);
     Ok(documents)
 }

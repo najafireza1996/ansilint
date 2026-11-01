@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `.cache/` is excluded implicitly only when `exclude_paths` is not configured,
+  as upstream documents; `target/` is no longer excluded.
 - Configuration keys that are valid but not implemented yet (for example
   `sarif_file`, `max_block_depth`) now print a notice instead of being silently
   inert.

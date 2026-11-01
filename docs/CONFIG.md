@@ -46,7 +46,10 @@ Unknown keys are validated against the vendored `ansible-lint-config` schema
   replaced.
 - `exclude_paths` from a config file are relative to the config file's location;
   `--exclude` is relative to the current directory.
-- When `exclude_paths` is absent, `.cache/` is excluded by default.
+- When `exclude_paths` is absent, `.cache/` (next to the config) is excluded
+  implicitly; defining `exclude_paths` drops that default, as upstream does.
+  `.git/` is always skipped. Hidden files and directories are currently not
+  walked at all (see OPEN_QUESTIONS #19).
 
 Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
 "lists extend / scalars override", unknown and ignored keys, and the ignore-file

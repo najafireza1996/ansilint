@@ -304,3 +304,11 @@ fn configuration_keys_without_an_effect_yet_produce_a_notice() {
         ["configuration key `sarif_file` is accepted but not implemented yet"]
     );
 }
+
+#[test]
+fn a_target_directory_is_linted_like_any_other() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("target/site.yml"), "- hosts: all\n");
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.files_linted, 1);
+}

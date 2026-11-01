@@ -94,8 +94,11 @@ impl ExcludeSet {
     ) -> Self {
         let mut set = Self::default();
         set.add_prefix(cwd.join(".git"));
-        set.add_prefix(cwd.join("target"));
-        set.add_prefix(cwd.join(".cache"));
+        // Upstream: `.cache/` is "implicit unless exclude_paths is defined in
+        // config", resolved like any config entry (relative to the config).
+        if config.exclude_paths.is_empty() {
+            set.add_prefix(config_base.join(".cache"));
+        }
         for path in &config.exclude_paths {
             set.add(config_base, path);
         }
@@ -296,8 +299,11 @@ pub(crate) fn relative_output_path(root: &Path, path: &Path) -> PathBuf {
 mod tests {
     use ansilint_model::FileKind;
 
+    use ansilint_config::Config;
+
     use super::{
         default_patterns, find_git_root, has_yaml_extension, relative_output_path, Classifier,
+        ExcludeSet,
     };
 
     #[test]
@@ -380,6 +386,21 @@ mod tests {
         );
         assert_eq!(sniffed("- name: x\n  shell: echo\n"), FileKind::Yaml);
         assert_eq!(sniffed(""), FileKind::Yaml);
+    }
+
+    #[test]
+    fn cache_is_implicit_only_without_configured_exclude_paths() {
+        let base = std::path::Path::new("/project");
+        let cache = base.join(".cache/x.yml");
+        let implicit = ExcludeSet::new(&Config::default(), base, &[], base);
+        assert!(implicit.is_excluded(&cache));
+        let configured = Config {
+            exclude_paths: vec!["vendor".into()],
+            ..Config::default()
+        };
+        let explicit = ExcludeSet::new(&configured, base, &[], base);
+        assert!(!explicit.is_excluded(&cache));
+        assert!(explicit.is_excluded(&base.join("vendor/y.yml")));
     }
 
     #[test]

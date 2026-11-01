@@ -21,6 +21,7 @@ code implements the conservative option (fewer findings) and marks the spot with
 | 13 | Review the commit SHAs used to pin third-party GitHub Actions | CI hardening | Pinned to commit SHAs since Phase 0; review on every dependency update | — |
 | 14 | LSP stack (`tower-lsp-server` vs `lsp-server` + `lsp-types`) | Phase 9 | Decide by ADR in P9-T1 | — |
 | 18 | H-B3 asks for an explicit rayon worker stack size. Recursion is now capped at `MAX_NESTING_DEPTH` (128 levels, ~256 frames) and `Node::anchors` is iterative, so the default 2 MiB worker stack is ample; 100 000-deep inputs are tested on default stacks. A per-run custom pool would add thread spawns to every `lint()` call (hot for the LSP). | H-B3 | Not set; revisit if any recursion is added that is not bounded by `MAX_NESTING_DEPTH` | maintainer |
+| 19 | The walker skips hidden files and directories (`ignore` standard filters), so `.github/` and `.cache/` are never linted. Upstream lints hidden paths (users exclude `.github/` explicitly). Matching it would surface findings in CI workflow files once `yaml` lands. | Discovery | Keep skipping hidden paths (fewer findings) until a maintainer decides; then flip with a CHANGELOG entry | maintainer |
 | 15 | The line-oriented comment scanner can see a `#` inside a literal/folded block scalar as a comment | `# noqa` and future `yaml[comments]` | Only affects `# noqa` when the block contains `noqa`; replace with a scanner that tracks block scalars in Phase 2 | — |
 
 ## Verified
@@ -35,6 +36,7 @@ them.
 | 7 | Message policy: tags and profiles verbatim; messages verbatim when verified against a real `ansible-lint` run, otherwise documented per rule. | `docs/COMPAT_POLICY.md`, ansible-lint 26.10.1 runs on two public repos | 2026-10-23 |
 | 11a | MSRV is Rust 1.85 with edition 2021; CI runs a dedicated MSRV job. | Internal decision, P0-T2 | 2026-10-23 |
 | 17 | `-t/--tags` keeps rules "whose id/tags match these values"; we also accept `rule[sub]`. Config key `tags` is not documented upstream; it shares the CLI semantics. | <https://docs.ansible.com/projects/lint/usage/> | 2026-11-01 |
+| 20 | `exclude_paths` entries resolve relative to the config file; `.cache/` is "implicit unless exclude_paths is defined in config"; config is never loaded from outside the git repository; the ignore file "should reside adjacent to the config file". | <https://docs.ansible.com/projects/lint/configuring/> | 2026-11-01 |
 | 16 | Task keywords are the "Task" list of the Playbook Keywords reference, copied verbatim into `data/task_keywords.txt`. `action`/`local_action` carry the action; `with_<lookup_plugin>` is any `with_` prefix. `listen` is a handler keyword documented elsewhere. | <https://docs.ansible.com/projects/ansible/latest/reference_appendices/playbooks_keywords.html> | 2026-11-01 |
 
 ## How to resolve an item

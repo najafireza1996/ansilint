@@ -1,0 +1,2 @@
+# Comment-only and nested: molecule/*/*.yml must not cross directories,
+# otherwise this would be read as an empty playbook.

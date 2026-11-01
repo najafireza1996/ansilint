@@ -1,0 +1,9 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check the port
+      ansible.builtin.wait_for:
+        port: 80
+        timeout: 5

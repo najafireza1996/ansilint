@@ -1,0 +1,11 @@
+---
+- name: Prompted
+  hosts: all
+  vars_prompt:
+    - name: release
+      prompt: Which release?
+      private: false
+  tasks:
+    - name: Show it
+      ansible.builtin.debug:
+        msg: "{{ release }}"

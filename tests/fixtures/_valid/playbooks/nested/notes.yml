@@ -1,0 +1,2 @@
+# Comment-only and nested: playbooks/*.yml must not cross directories,
+# otherwise this would be read as an empty playbook.

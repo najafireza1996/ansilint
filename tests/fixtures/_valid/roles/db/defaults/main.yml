@@ -1,0 +1,11 @@
+---
+db_base: &db_base
+  port: 5432
+  host: "{{ inventory_hostname }}"
+db_primary:
+  <<: *db_base
+  role: primary
+db_replicas: "{{ groups['db'] | difference([inventory_hostname]) }}"
+db_url: >-
+  postgres://{{ db_primary.host }}:{{ db_primary.port }}/app
+db_hosts: *db_base

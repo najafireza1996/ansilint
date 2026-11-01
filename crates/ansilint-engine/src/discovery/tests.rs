@@ -188,3 +188,61 @@ fn output_paths_use_forward_slashes() {
         std::path::PathBuf::from("roles/x/tasks/main.yml")
     );
 }
+
+/// H-E6: each of the 13 kinds added in H-E2, with a sample path; the two that
+/// can never be a file's kind are listed with the reason.
+const PREVIOUSLY_MISSING_KINDS: &[(FileKind, Option<&str>)] = &[
+    (FileKind::Jinja2, Some("roles/web/templates/nginx.conf.j2")),
+    (FileKind::Text, Some("roles/web/templates/index.html")),
+    (
+        FileKind::AnsibleLintConfig,
+        Some(".config/ansible-lint.yml"),
+    ),
+    (
+        FileKind::AnsibleNavigatorConfig,
+        Some("ansible-navigator.yaml"),
+    ),
+    (FileKind::Reno, Some("releasenotes/notes/feature-x.yaml")),
+    // Upstream's glob `**/rulebooks/*.{yml,yaml` has an unclosed brace and
+    // matches nothing, upstream included.
+    (FileKind::Rulebook, None),
+    (
+        FileKind::Pattern,
+        Some("extensions/patterns/web/meta/pattern.json"),
+    ),
+    (FileKind::PlayArgspec, Some("playbooks/site.meta.yml")),
+    // `**/roles/*/` matches role directories; only files are classified.
+    (FileKind::Role, None),
+    (
+        FileKind::TestMeta,
+        Some("tests/integration/targets/web/meta/main.yml"),
+    ),
+    (
+        FileKind::SanityIgnoreFile,
+        Some("tests/sanity/ignore-2.17.txt"),
+    ),
+    (FileKind::Plugin, Some("plugins/filter/text.py")),
+    (FileKind::Python, Some("docs/conf.py")),
+];
+
+#[test]
+fn every_previously_missing_kind_is_detected_or_documented() {
+    let classifier = Classifier::new(&[]).0;
+    let root = std::path::Path::new("/project");
+    let wrong: Vec<String> = PREVIOUSLY_MISSING_KINDS
+        .iter()
+        .filter_map(|(kind, path)| path.map(|path| (kind, path)))
+        .filter_map(|(kind, path)| {
+            let actual = classifier.classify(root, &root.join(path));
+            (actual != *kind).then(|| format!("{path}: expected {kind:?}, got {actual:?}"))
+        })
+        .collect();
+    assert_eq!(PREVIOUSLY_MISSING_KINDS.len(), 13);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    let role_dir = classifier.classify(root, &root.join("roles/web"));
+    assert_ne!(
+        role_dir,
+        FileKind::Role,
+        "a path without a trailing slash is a file"
+    );
+}

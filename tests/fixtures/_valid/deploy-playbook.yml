@@ -1,0 +1,5 @@
+- name: Playbook found by its file name
+  hosts: all
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:

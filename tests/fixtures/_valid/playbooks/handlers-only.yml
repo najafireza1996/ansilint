@@ -1,0 +1,8 @@
+---
+- name: Handlers only
+  hosts: all
+  handlers:
+    - name: Restart
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

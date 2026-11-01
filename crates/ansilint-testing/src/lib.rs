@@ -180,3 +180,19 @@ fn file_name(path: &std::path::Path) -> String {
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default()
 }
+
+/// Writes a test file, creating parent directories.
+///
+/// # Panics
+///
+/// Panics when the file cannot be written; this is a test helper.
+#[allow(
+    clippy::expect_used,
+    reason = "test helper: failing loudly is the point"
+)]
+pub fn write_file(path: &std::path::Path, contents: &str) {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("create parent");
+    }
+    std::fs::write(path, contents).expect("write fixture");
+}

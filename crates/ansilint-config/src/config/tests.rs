@@ -20,7 +20,7 @@ fn empty_input_gives_defaults() {
 #[test]
 fn parses_known_keys() {
     let parsed = parse(
-        "profile: basic\nexclude_paths: [.cache, vendor]\nskip_list: [yaml]\nquiet: true\nstrict: true\nverbosity: 2\nkinds:\n  - kind: playbook\n    glob: \"playbooks/**/*.yml\"\n",
+        "profile: basic\nexclude_paths: [.cache, vendor]\nskip_list: [yaml]\nquiet: true\nstrict: true\nverbosity: 2\nkinds:\n  - playbook: \"playbooks/**/*.yml\"\n",
     );
     assert_eq!(parsed.config.profile, Profile::Basic);
     assert_eq!(parsed.config.exclude_paths.len(), 2);
@@ -95,7 +95,7 @@ fn parses_every_scalar_and_list_key() {
 fn rejects_invalid_structure_and_values() {
     assert!(Config::from_bytes("[]\n").is_err());
     assert!(Config::from_bytes("kinds: 5\n").is_err());
-    assert!(Config::from_bytes("kinds:\n  - kind: playbook\n").is_err());
+    assert!(Config::from_bytes("kinds:\n  - playbook: [a]\n").is_err());
     assert!(Config::from_bytes("max_block_depth: nope\n").is_err());
     assert!(Config::from_bytes("verbosity: 999\n").is_err());
     assert!(Config::from_bytes("profile: none\n").is_err());
@@ -111,4 +111,25 @@ fn reports_keys_that_are_accepted_but_not_implemented_yet() {
         parsed.pending_keys,
         ["max_block_depth", "sarif_file", "verbosity"]
     );
+}
+
+#[test]
+fn parses_upstream_kinds_entries() {
+    // Verbatim shape from upstream's own .ansible-lint (VERIFY-UPSTREAM done).
+    let parsed =
+        parse("kinds:\n  - yaml: \"**/*.yaml-too\"\n  - playbook: \"**/examples/*.{yml,yaml}\"\n");
+    let kinds: Vec<(&str, &str)> = parsed
+        .config
+        .kinds
+        .iter()
+        .map(|pattern| (pattern.kind.as_str(), pattern.glob.as_str()))
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            ("yaml", "**/*.yaml-too"),
+            ("playbook", "**/examples/*.{yml,yaml}")
+        ]
+    );
+    assert!(Config::from_bytes("kinds:\n  - {kind: playbook, glob: \"*.yml\"}\n").is_err());
 }

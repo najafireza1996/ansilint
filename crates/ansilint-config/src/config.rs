@@ -367,29 +367,27 @@ fn kind_list(node: &Node) -> Result<Vec<KindPattern>, ConfigError> {
     let Some(sequence) = node.as_sequence() else {
         return Err(ConfigError::new(node.span(), "`kinds` must be a list"));
     };
+    // Upstream shape: each entry is a single `<kind>: <glob>` mapping.
     let mut patterns = Vec::new();
     for item in &sequence.items {
-        let Some(mapping) = item.as_mapping() else {
-            return Err(ConfigError::new(item.span(), "each kind must be a mapping"));
+        let Some([entry]) = item.as_mapping().map(|mapping| mapping.entries.as_slice()) else {
+            return Err(ConfigError::new(
+                item.span(),
+                "each `kinds` entry must be a single `<kind>: <glob>` mapping",
+            ));
         };
-        let kind = required_string(mapping.get("kind"), "kind")?;
-        let glob = required_string(mapping.get("glob"), "glob")?;
+        let (Some(kind), Some(glob)) = (entry.key.as_str(), entry.value.as_str()) else {
+            return Err(ConfigError::new(
+                item.span(),
+                "a `kinds` entry needs a string kind and a string glob",
+            ));
+        };
         patterns.push(KindPattern {
             kind: kind.to_string(),
             glob: glob.to_string(),
         });
     }
     Ok(patterns)
-}
-
-fn required_string<'a>(node: Option<&'a Node>, key: &str) -> Result<&'a str, ConfigError> {
-    let Some(node) = node else {
-        return Err(ConfigError::new(
-            ansilint_core::Span::empty(0),
-            format!("kind entry is missing `{key}`"),
-        ));
-    };
-    string_value(node)
 }
 
 #[cfg(test)]

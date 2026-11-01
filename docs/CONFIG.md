@@ -55,6 +55,17 @@ Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
 "lists extend / scalars override", unknown and ignored keys, and the ignore-file
 grammar.
 
+## `kinds`
+
+Each entry is a single `<kind>: <glob>` mapping, prepended to the default
+patterns; the first match decides a file's kind:
+
+```yaml
+kinds:
+  - playbook: "**/examples/*.{yml,yaml}"
+  - yaml: "**/*.yaml-too"
+```
+
 ## Non-skippable rules and severity
 
 `internal-error`, `parser-error` and `load-failure` (and `schema` once it

@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `kinds` entries now use the upstream `- <kind>: <glob>` shape; configs that
+  set `kinds` failed to load before.
 - `# noqa` is read from real comment tokens only: text such as
   `"x # noqa: rule"` inside a quoted or block scalar no longer suppresses a
   finding, and `#` lines inside block scalars are no longer treated as comments.

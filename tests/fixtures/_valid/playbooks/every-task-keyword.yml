@@ -1,0 +1,64 @@
+---
+- name: Keywords
+  hosts: all
+  any_errors_fatal: true
+  gather_facts: false
+  serial: 2
+  strategy: free
+  vars_files: [vars.yml]
+  module_defaults:
+    ansible.builtin.uri:
+      timeout: 5
+  tasks:
+    - name: Many keywords
+      ansible.builtin.command: /bin/true
+      args:
+        chdir: /tmp
+      any_errors_fatal: true
+      async: 10
+      poll: 0
+      become: true
+      become_exe: sudo
+      become_flags: -H
+      become_method: sudo
+      become_user: root
+      changed_when: false
+      check_mode: false
+      collections: [community.general]
+      connection: local
+      debugger: never
+      delay: 1
+      delegate_facts: true
+      delegate_to: localhost
+      diff: false
+      environment: {LANG: C}
+      failed_when: false
+      ignore_errors: false
+      ignore_unreachable: false
+      module_defaults: {}
+      no_log: true
+      port: 22
+      register: out
+      remote_user: root
+      retries: 1
+      run_once: true
+      tags: [always]
+      throttle: 1
+      timeout: 30
+      until: out is success
+      vars: {x: 1}
+      when: true
+    - name: Lookups
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+      with_env: [HOME]
+    - name: FQCN lookup loop
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+      with_community.general.random_words: 1
+    - name: Loop control
+      ansible.builtin.debug:
+        msg: "{{ fruit }}"
+      loop: [a, b]
+      loop_control:
+        loop_var: fruit

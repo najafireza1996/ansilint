@@ -1,0 +1,9 @@
+---
+- name: Include more
+  ansible.builtin.include_tasks: merge-keys.yml
+- name: Import role
+  ansible.builtin.import_role:
+    name: other
+- name: Free form
+  ansible.builtin.command: echo hi
+  changed_when: false

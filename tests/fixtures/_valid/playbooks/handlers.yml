@@ -1,0 +1,15 @@
+---
+- name: Handlers
+  hosts: all
+  tasks:
+    - name: Change config
+      ansible.builtin.template:
+        src: a.j2
+        dest: /etc/a
+      notify: Restart services
+  handlers:
+    - name: Restart nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+      listen: Restart services

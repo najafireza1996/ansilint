@@ -1,0 +1,23 @@
+---
+- name: Anchors
+  hosts: all
+  vars:
+    base_args: &copy_args
+      src: a.txt
+      dest: /tmp/a.txt
+  tasks:
+    - &debug_task
+      name: Shared debug
+      ansible.builtin.debug:
+        msg: hi
+    - *debug_task
+    - <<: *debug_task
+      name: Merged debug
+    - <<: [*debug_task]
+      name: Merged from a list
+    - name: Copy with aliased args
+      ansible.builtin.copy: *copy_args
+    - name: Copy with merged args
+      ansible.builtin.copy:
+        <<: *copy_args
+        mode: "0644"

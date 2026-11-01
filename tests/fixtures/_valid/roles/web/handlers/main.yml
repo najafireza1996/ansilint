@@ -1,0 +1,6 @@
+---
+- name: Restart web
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+  listen: web changed

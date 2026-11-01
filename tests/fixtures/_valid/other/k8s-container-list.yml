@@ -1,0 +1,6 @@
+- name: web
+  image: nginx
+  command: [nginx]
+- name: sidecar
+  image: busybox
+  shell: sh

@@ -1,0 +1,7 @@
+- &base
+  name: Base
+  ansible.builtin.debug:
+    msg: base
+- *base
+- <<: *base
+  name: Child

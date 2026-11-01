@@ -1,0 +1,9 @@
+---
+- name: Configure web servers
+  hosts: web
+  become: true
+  tasks:
+    - name: Install nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present

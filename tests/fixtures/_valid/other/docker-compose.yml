@@ -1,0 +1,8 @@
+services:
+  web:
+    image: nginx:1.27
+    ports: ["80:80"]
+    environment:
+      - KEY=value
+  db:
+    image: postgres:16

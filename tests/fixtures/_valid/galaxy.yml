@@ -1,0 +1,6 @@
+---
+namespace: example
+name: demo
+version: 1.0.0
+readme: README.md
+authors: [Example <example@example.com>]

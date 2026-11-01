@@ -1,0 +1,4 @@
+---
+- name: Import web
+  ansible.builtin.import_playbook: site.yml
+- import_playbook: blocks.yml

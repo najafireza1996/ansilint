@@ -1,0 +1,15 @@
+---
+- name: First
+  hosts: all
+  tasks:
+    - name: One
+      ansible.builtin.debug:
+        msg: one
+...
+---
+- name: Second
+  hosts: db
+  tasks:
+    - name: Two
+      ansible.builtin.debug:
+        msg: two

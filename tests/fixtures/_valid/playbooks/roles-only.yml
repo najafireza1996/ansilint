@@ -1,0 +1,8 @@
+---
+- name: Roles only
+  hosts: all
+  roles:
+    - web
+    - role: web
+      vars:
+        port: 8080

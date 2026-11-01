@@ -1,0 +1,6 @@
+- import_playbook: site.yml
+- name: Late play
+  hosts: all
+  tasks:
+    - name: Ping
+      ansible.builtin.ping:

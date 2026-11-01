@@ -1,0 +1,7 @@
+---
+- name: Ünïcödé 🚀 名前
+  hosts: all
+  tasks:
+    - name: 日本語のタスク ✅
+      ansible.builtin.debug:
+        msg: "émoji 🎉 and CJK 中文"

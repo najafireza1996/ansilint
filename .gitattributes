@@ -1,0 +1,2 @@
+# Byte-exact fixtures: CRLF, BOM and tab cases must not be normalised.
+tests/fixtures/_valid/** -text

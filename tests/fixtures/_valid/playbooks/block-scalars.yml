@@ -1,0 +1,15 @@
+---
+- name: Block scalars
+  hosts: all
+  tasks:
+    - name: Literal with noqa text and a tab
+      ansible.builtin.shell: |
+        echo "# noqa: everything"
+        printf 'a\tb'
+        	keep tab after indentation
+      changed_when: false
+    - name: Folded
+      ansible.builtin.debug:
+        msg: >-
+          folded # not a comment
+          text

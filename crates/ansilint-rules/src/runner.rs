@@ -34,7 +34,8 @@ fn visit_rule(rule: &dyn Rule, cx: &FileCx<'_>, out: &mut Vec<Finding>) {
     match &cx.built.model {
         FileModel::Playbook(plays) => visit_plays(rule, cx, plays, out),
         FileModel::Tasks(items) | FileModel::Handlers(items) => visit_items(rule, cx, items, out),
-        FileModel::Other | FileModel::Unknown => {}
+        // Other, Unknown and future kinds have no task structure to visit.
+        _ => {}
     }
 }
 

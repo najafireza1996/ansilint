@@ -13,6 +13,7 @@ pub struct Edit {
 
 /// Whether a fix can be applied without an explicit opt-in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Applicability {
     /// Safe to apply with `--fix`.
     Safe,

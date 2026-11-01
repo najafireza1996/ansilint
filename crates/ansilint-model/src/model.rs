@@ -195,7 +195,22 @@ pub struct Play<'a> {
 }
 
 /// The model for one file.
+///
+/// Non-exhaustive (H-D5): later phases add models for more file kinds, so
+/// callers outside this crate must keep a wildcard arm:
+///
+/// ```compile_fail
+/// fn count(model: &ansilint_model::FileModel<'_>) -> usize {
+///     use ansilint_model::FileModel;
+///     match model {
+///         FileModel::Playbook(plays) => plays.len(),
+///         FileModel::Tasks(items) | FileModel::Handlers(items) => items.len(),
+///         FileModel::Other | FileModel::Unknown => 0,
+///     }
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FileModel<'a> {
     /// A playbook.
     Playbook(Vec<Play<'a>>),

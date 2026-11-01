@@ -58,6 +58,7 @@ pub struct DisplayFinding<'a> {
 
 /// Output errors.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum OutputError {
     /// Writing to the sink failed.
     #[error(transparent)]

@@ -8,6 +8,7 @@ use thiserror::Error;
 
 /// A failure that prevents linting from starting or completing.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum EngineError {
     /// A configuration or ignore file could not be loaded.
     #[error("failed to load {path}: {reason}")]

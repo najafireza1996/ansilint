@@ -1,6 +1,6 @@
 [
   {
-    "col": 3,
+    "col": 1,
     "line": 1,
     "message": "empty playbook",
     "severity": "Warning",

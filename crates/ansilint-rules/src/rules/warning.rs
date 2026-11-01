@@ -1,7 +1,7 @@
 //! The upstream `warning` meta-rule for non-fatal notices.
 
 use ansilint_core::{Finding, Severity, Span, Tag};
-use ansilint_model::{is_import_playbook, FileKind};
+use ansilint_model::FileKind;
 
 use crate::meta::Tier;
 use crate::rule::{FileCx, Rule};
@@ -28,33 +28,18 @@ impl Rule for WarningRule {
     }
 
     fn check_file(&self, cx: &FileCx<'_>, out: &mut Vec<Finding>) {
-        if cx.kind != FileKind::Playbook {
+        // ansible-core reports "Empty playbook, nothing to do" only when the
+        // loaded data is null (ansible/ansible 025bb4d, playbook/__init__.py);
+        // a play without tasks is valid (H-E6).
+        if cx.kind != FileKind::Playbook
+            || !cx.documents.iter().all(|document| document.root.is_null())
+        {
             return;
         }
-        let plays = cx.built.model.plays();
-        let empty = plays.iter().all(|play| {
-            !play
-                .keys
-                .entries
-                .iter()
-                .any(|entry| is_import_playbook(entry.key.value))
-                && play.pre_tasks.is_empty()
-                && play.tasks.is_empty()
-                && play.post_tasks.is_empty()
-                && play.handlers.is_empty()
-                && play.roles.is_empty()
-        });
-        if !empty {
-            return;
-        }
-        let span = plays.first().map_or_else(
-            || {
-                cx.documents
-                    .first()
-                    .map_or(Span::empty(0), |document| document.root.span())
-            },
-            |play| play.span,
-        );
+        let span = cx
+            .documents
+            .first()
+            .map_or(Span::empty(0), |document| document.root.span());
         out.push(Finding::new(
             Tag::new("warning"),
             "empty playbook",
@@ -100,9 +85,19 @@ mod tests {
 
     #[test]
     fn warns_for_an_empty_playbook() {
-        let found = findings("- hosts: all\n");
-        assert_eq!(found.len(), 1);
-        assert_eq!(found[0].tag.rule, "warning");
+        for text in ["", "# only a comment\n", "---\n...\n"] {
+            let found = findings(text);
+            assert_eq!(found.len(), 1, "{text:?}");
+            assert_eq!(found[0].tag.rule, "warning");
+        }
+    }
+
+    #[test]
+    fn a_play_without_tasks_is_not_an_empty_playbook() {
+        // ansible-core raises "Empty playbook" only when the file has no data.
+        assert!(findings("- hosts: all\n").is_empty());
+        assert!(findings("- hosts: all\n  gather_facts: true\n").is_empty());
+        assert!(findings("- import_playbook: other.yml\n").is_empty());
     }
 
     #[test]

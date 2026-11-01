@@ -45,18 +45,21 @@ fn parser_errors_exit_with_two() {
 #[test]
 fn warnings_pass_unless_strict() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .arg("site.yml")
+        .arg("site-playbook.yml")
         .assert()
         .code(0)
         .stdout(contains("warning: empty playbook"));
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .args(["site.yml", "--strict"])
+        .args(["site-playbook.yml", "--strict"])
         .assert()
         .code(2);
 }
@@ -64,11 +67,14 @@ fn warnings_pass_unless_strict() {
 #[test]
 fn json_output_contains_tags() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .args(["site.yml", "-f", "json"])
+        .args(["site-playbook.yml", "-f", "json"])
         .assert()
         .success()
         .stdout(contains("\"tag\":\"warning\""));
@@ -78,13 +84,13 @@ fn json_output_contains_tags() {
 fn noqa_silences_findings() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
-        "- hosts: all  # noqa: warning\n",
+        &directory.path().join("site-playbook.yml"),
+        "# noqa: warning\n",
     );
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .arg("site.yml")
+        .arg("site-playbook.yml")
         .assert()
         .success()
         .stdout("");
@@ -109,16 +115,19 @@ fn lists_rules_and_tags() {
 #[test]
 fn generates_an_ignore_file() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .args(["site.yml", "--generate-ignore"])
+        .args(["site-playbook.yml", "--generate-ignore"])
         .assert()
         .success();
     let contents =
         fs::read_to_string(directory.path().join(".ansible-lint-ignore")).expect("ignore file");
-    assert!(contents.contains("site.yml warning"));
+    assert!(contents.contains("site-playbook.yml warning"));
 }
 
 // Exit codes (H-E1), verified against upstream ansible-lint at commit
@@ -128,7 +137,7 @@ fn generates_an_ignore_file() {
 fn clean_files_exit_with_zero() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
+        &directory.path().join("site-playbook.yml"),
         "- hosts: all\n  tasks:\n    - name: ping\n      ansible.builtin.ping:\n",
     );
     Command::cargo_bin("ansilint")
@@ -155,7 +164,10 @@ fn usage_errors_exit_with_two_like_argparse() {
 #[test]
 fn invalid_configuration_exits_with_three() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(&directory.path().join(".ansible-lint"), "strict: maybe\n");
     Command::cargo_bin("ansilint")
         .expect("binary")
@@ -187,7 +199,7 @@ fn unexpected_io_failure_exits_with_one() {
     use std::os::unix::fs::PermissionsExt;
     let directory = tempfile::tempdir().expect("temp dir");
     let locked = directory.path().join("locked");
-    write(&locked.join("site.yml"), "- hosts: all\n");
+    write(&locked.join("site-playbook.yml"), "# nothing to do\n");
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).expect("chmod");
     let output = Command::cargo_bin("ansilint")
         .expect("binary")
@@ -229,7 +241,7 @@ fn output_is_identical_across_thread_counts() {
     for index in 0..10 {
         write(
             &directory.path().join(format!("empty_{index}.yml")),
-            "- hosts: all\n",
+            "# nothing to do\n",
         );
         write(
             &directory.path().join(format!("bad_{index}.yml")),
@@ -254,12 +266,15 @@ fn output_is_identical_across_thread_counts() {
 #[test]
 fn quiet_configuration_suppresses_warnings() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(&directory.path().join(".ansible-lint"), "quiet: true\n");
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .arg("site.yml")
+        .arg("site-playbook.yml")
         .assert()
         .success()
         .stderr("");
@@ -268,12 +283,15 @@ fn quiet_configuration_suppresses_warnings() {
 #[test]
 fn tags_flag_keeps_only_matching_rules() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(&directory.path().join("bad.yml"), "a: [1,\n");
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .args(["-t", "syntax", "site.yml", "bad.yml"])
+        .args(["-t", "syntax", "site-playbook.yml", "bad.yml"])
         .assert()
         .code(2)
         .stdout(contains("parser-error"))

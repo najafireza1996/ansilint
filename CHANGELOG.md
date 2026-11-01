@@ -9,6 +9,10 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- "empty playbook" is reported only for a playbook file with no data (empty or
+  comment-only), as ansible-core does; a play without tasks such as
+  `- hosts: all` with `gather_facts` is no longer flagged. `# noqa` now works in
+  comment-only files.
 - `--strict` now fails on any remaining finding, including `Info`, as upstream
   does.
 - Default file kinds now follow upstream's ordered `DEFAULT_KINDS`: for example

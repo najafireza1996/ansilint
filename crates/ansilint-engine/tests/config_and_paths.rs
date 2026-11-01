@@ -19,10 +19,13 @@ fn options(directory: &std::path::Path) -> LintOptions {
 #[test]
 fn ignore_file_can_skip_a_finding() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint-ignore"),
-        "site.yml warning skip\n",
+        "site-playbook.yml warning skip\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
@@ -31,12 +34,15 @@ fn ignore_file_can_skip_a_finding() {
 #[test]
 fn generates_an_ignore_file() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     let result = lint(&options(directory.path())).expect("lint");
     let ignore = directory.path().join(".ansible-lint-ignore");
     generate_ignore(&result, &ignore).expect("generate ignore");
     let contents = fs::read_to_string(ignore).expect("read ignore");
-    assert!(contents.contains("site.yml warning"));
+    assert!(contents.contains("site-playbook.yml warning"));
 }
 
 #[test]
@@ -63,10 +69,13 @@ fn discovers_configuration_in_a_parent_directory() {
 #[test]
 fn ignore_file_matches_nested_paths() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("sub/site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("sub/site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint-ignore"),
-        "sub/site.yml warning skip\n",
+        "sub/site-playbook.yml warning skip\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
@@ -75,7 +84,10 @@ fn ignore_file_matches_nested_paths() {
 #[test]
 fn excludes_the_default_cache_directory() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(&directory.path().join(".cache/bad.yml"), "a: [1,\n");
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
@@ -84,14 +96,17 @@ fn excludes_the_default_cache_directory() {
 #[test]
 fn strips_a_bom_from_configuration_and_ignore_files() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint"),
         "\u{feff}exclude_paths: []\n",
     );
     write(
         &directory.path().join(".ansible-lint-ignore"),
-        "\u{feff}site.yml warning skip\n",
+        "\u{feff}site-playbook.yml warning skip\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
@@ -100,14 +115,17 @@ fn strips_a_bom_from_configuration_and_ignore_files() {
 #[test]
 fn discovers_ignore_file_next_to_a_dot_config_directory() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".config/ansible-lint.yml"),
         "exclude_paths: []\n",
     );
     write(
         &directory.path().join(".config/ansible-lint-ignore.txt"),
-        "site.yml warning skip\n",
+        "site-playbook.yml warning skip\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
@@ -116,7 +134,10 @@ fn discovers_ignore_file_next_to_a_dot_config_directory() {
 #[test]
 fn can_disable_default_rules() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint"),
         "use_default_rules: false\n",
@@ -128,7 +149,10 @@ fn can_disable_default_rules() {
 #[test]
 fn tag_selectors_that_match_no_rule_produce_a_notice() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint"),
         "tags: [syntax, no-such-tag]\n",
@@ -144,7 +168,10 @@ fn tag_selectors_that_match_no_rule_produce_a_notice() {
 #[test]
 fn configuration_keys_without_an_effect_yet_produce_a_notice() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint"),
         "sarif_file: out.sarif\nstrict: false\n",
@@ -159,7 +186,10 @@ fn configuration_keys_without_an_effect_yet_produce_a_notice() {
 #[test]
 fn a_target_directory_is_linted_like_any_other() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("target/site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("target/site-playbook.yml"),
+        "# nothing to do\n",
+    );
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
 }
@@ -167,15 +197,18 @@ fn a_target_directory_is_linted_like_any_other() {
 #[test]
 fn crlf_configuration_and_ignore_files_are_understood() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
-    write(&directory.path().join("other.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
+    write(&directory.path().join("other.yml"), "# nothing to do\n");
     write(
         &directory.path().join(".ansible-lint"),
         "exclude_paths:\r\n  - other.yml\r\n",
     );
     write(
         &directory.path().join(".ansible-lint-ignore"),
-        "site.yml warning skip\r\n",
+        "site-playbook.yml warning skip\r\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
@@ -185,7 +218,10 @@ fn crlf_configuration_and_ignore_files_are_understood() {
 #[test]
 fn configuration_files_go_through_the_shared_loader() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     fs::write(directory.path().join(".ansible-lint"), [0xFF, 0xFE, b'\n']).expect("write");
     let error = lint(&options(directory.path())).expect_err("invalid UTF-8 config");
     assert!(error.to_string().contains("not valid UTF-8"), "{error}");
@@ -205,7 +241,10 @@ fn relative_config_path_resolves_exclude_paths_from_the_config_location() {
         &directory.path().join("lint.yml"),
         "exclude_paths: [work/skip]\n",
     );
-    write(&directory.path().join("work/site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("work/site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(&directory.path().join("work/skip/bad.yml"), "a: [1,\n");
     let mut options = LintOptions::new(directory.path().join("work"));
     options.config_path = Some("../lint.yml".into());
@@ -214,7 +253,7 @@ fn relative_config_path_resolves_exclude_paths_from_the_config_location() {
     // No git repository: the project root is the cwd (`work/`).
     assert_eq!(
         result.findings[0].finding.path,
-        std::path::PathBuf::from("site.yml")
+        std::path::PathBuf::from("site-playbook.yml")
     );
 }
 
@@ -222,13 +261,16 @@ fn relative_config_path_resolves_exclude_paths_from_the_config_location() {
 fn files_outside_the_project_root_are_reported_relative_not_absolute() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(&directory.path().join("project/.git/HEAD"), "ref: x\n");
-    write(&directory.path().join("outside/site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("outside/site-playbook.yml"),
+        "# nothing to do\n",
+    );
     let mut options = LintOptions::new(directory.path().join("project"));
-    options.paths = vec![directory.path().join("outside/site.yml")];
+    options.paths = vec![directory.path().join("outside/site-playbook.yml")];
     let result = lint(&options).expect("lint");
     assert_eq!(
         result.findings[0].finding.path,
-        std::path::PathBuf::from("../outside/site.yml")
+        std::path::PathBuf::from("../outside/site-playbook.yml")
     );
 }
 
@@ -269,8 +311,8 @@ fn finds_the_ignore_file_in_every_documented_layout() {
 fn generated_ignore_files_round_trip_paths_with_spaces() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("my dir/site #1.yml"),
-        "- hosts: all\n",
+        &directory.path().join("my dir/site #1 playbook.yml"),
+        "# nothing to do\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     let ignore = directory.path().join(".ansible-lint-ignore");
@@ -282,13 +324,16 @@ fn generated_ignore_files_round_trip_paths_with_spaces() {
         .iter()
         .map(|entry| entry.path.as_str())
         .collect();
-    assert_eq!(paths, ["my dir/site #1.yml"]);
+    assert_eq!(paths, ["my dir/site #1 playbook.yml"]);
 }
 
 #[test]
 fn invalid_kinds_entries_produce_notices() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     write(
         &directory.path().join(".ansible-lint"),
         "kinds:\n  - playbok: \"**/*.yml\"\n  - tasks: \"[unclosed\"\n",

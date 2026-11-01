@@ -21,16 +21,20 @@ fn a_panicking_rule_is_reported_and_the_run_continues() {
         "# ansilint-test-panic\nkey: value\n",
     )
     .expect("write boom.yml");
-    fs::write(directory.path().join("site.yml"), "- hosts: all\n").expect("write site.yml");
+    fs::write(
+        directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    )
+    .expect("write site-playbook.yml");
     Command::cargo_bin("ansilint")
         .expect("binary")
         .current_dir(directory.path())
-        .args(["boom.yml", "site.yml"])
+        .args(["boom.yml", "site-playbook.yml"])
         .assert()
         .code(2)
         .stdout(contains(
             "internal-error: rule `test-panic-probe` panicked: panic probe triggered",
         ))
         .stdout(contains("boom.yml:"))
-        .stdout(contains("site.yml:1: warning: empty playbook"));
+        .stdout(contains("site-playbook.yml:1: warning: empty playbook"));
 }

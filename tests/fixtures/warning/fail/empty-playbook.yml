@@ -1,1 +1,2 @@
-- hosts: all
+# A playbook file with no plays at all: ansible-core says
+# "Empty playbook, nothing to do".

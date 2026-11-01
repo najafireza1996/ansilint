@@ -19,7 +19,10 @@ fn options(directory: &std::path::Path) -> LintOptions {
 #[test]
 fn warns_about_an_empty_playbook() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
     assert_eq!(result.findings.len(), 1);
@@ -27,7 +30,7 @@ fn warns_about_an_empty_playbook() {
     assert_eq!(result.findings[0].line, 1);
     assert_eq!(
         result.findings[0].finding.path,
-        std::path::PathBuf::from("site.yml")
+        std::path::PathBuf::from("site-playbook.yml")
     );
 }
 
@@ -45,8 +48,8 @@ fn reports_parser_errors_with_a_position() {
 fn noqa_silences_skippable_findings() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
-        "- hosts: all  # noqa: warning\n",
+        &directory.path().join("site-playbook.yml"),
+        "# noqa: warning\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
     assert!(result.findings.is_empty());
@@ -69,12 +72,15 @@ fn warn_list_downgrades_errors() {
 #[test]
 fn renders_pep8_and_json_output() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join("site-playbook.yml"),
+        "# nothing to do\n",
+    );
     let result = lint(&options(directory.path())).expect("lint");
     let mut pep8 = Vec::new();
     result.render(Format::Pep8, &mut pep8).expect("render pep8");
     let pep8 = String::from_utf8(pep8).expect("UTF-8");
-    assert!(pep8.contains("site.yml:1: warning: empty playbook"));
+    assert!(pep8.contains("site-playbook.yml:1: warning: empty playbook"));
     let mut json = Vec::new();
     result.render(Format::Json, &mut json).expect("render json");
     let json = String::from_utf8(json).expect("UTF-8");
@@ -82,13 +88,13 @@ fn renders_pep8_and_json_output() {
 }
 
 #[test]
-fn handles_uppercase_extensions_by_sniffing() {
+fn discovers_files_with_uppercase_extensions() {
     let directory = tempfile::tempdir().expect("temp dir");
-    write(&directory.path().join("SITE.YML"), "- hosts: all\n");
+    write(&directory.path().join("SITE.YML"), "a: [1,\n");
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.files_linted, 1);
     assert_eq!(result.findings.len(), 1);
-    assert_eq!(result.findings[0].finding.tag.rule, "warning");
+    assert_eq!(result.findings[0].finding.tag.rule, "parser-error");
 }
 
 #[test]
@@ -103,7 +109,7 @@ fn does_not_treat_generic_yaml_lists_as_tasks() {
 fn a_playbook_of_imports_is_not_empty() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
+        &directory.path().join("site-playbook.yml"),
         "- import_playbook: web.yml\n- ansible.builtin.import_playbook: db.yml\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
@@ -125,7 +131,7 @@ fn model_issues_are_not_surfaced_as_warnings() {
 fn model_issues_in_playbooks_and_handlers_never_become_findings() {
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
+        &directory.path().join("site-playbook.yml"),
         "- hosts: all\n  tasks: not-a-list\n  roles: also-not-a-list\n  handlers:\n    - 42\n",
     );
     write(
@@ -138,11 +144,7 @@ fn model_issues_in_playbooks_and_handlers_never_become_findings() {
         .iter()
         .map(|positioned| positioned.finding.tag.to_string())
         .collect();
-    assert_eq!(
-        tags,
-        ["warning"],
-        "only the empty-playbook warning may fire"
-    );
+    assert!(tags.is_empty(), "no model issue may surface: {tags:?}");
 }
 
 #[test]
@@ -159,14 +161,26 @@ fn hundred_thousand_deep_nesting_is_a_parser_error_not_a_crash() {
 }
 
 #[test]
-fn noqa_inside_a_scalar_does_not_suppress() {
+fn noqa_in_a_comment_only_playbook_suppresses_its_warning() {
+    // End-to-end path of comment-token noqa (H-D1). The negative case (a
+    // `# noqa` inside a scalar) is pinned in the YAML parser tests, because a
+    // playbook with any scalar is no longer empty and has no warning to hide.
     let directory = tempfile::tempdir().expect("temp dir");
     write(
-        &directory.path().join("site.yml"),
-        "- {hosts: \"a # noqa: warning, x\"}\n",
+        &directory.path().join("a-playbook.yml"),
+        "# noqa: warning\n",
+    );
+    write(
+        &directory.path().join("b-playbook.yml"),
+        "# nothing to do\n",
     );
     let result = lint(&options(directory.path())).expect("lint");
-    assert_eq!(result.findings.len(), 1, "the quoted text is not a comment");
+    let paths: Vec<String> = result
+        .findings
+        .iter()
+        .map(|positioned| positioned.finding.path.display().to_string())
+        .collect();
+    assert_eq!(paths, ["b-playbook.yml"]);
 }
 
 #[test]

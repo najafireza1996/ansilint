@@ -1,0 +1,3 @@
+- name: Gather facts only; valid, not empty
+  hosts: all
+  gather_facts: true

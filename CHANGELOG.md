@@ -9,6 +9,9 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `# noqa` is read from real comment tokens only: text such as
+  `"x # noqa: rule"` inside a quoted or block scalar no longer suppresses a
+  finding, and `#` lines inside block scalars are no longer treated as comments.
 - `skip_list`, ignore-file `skip` entries and `tags` no longer hide
   `parser-error`, `load-failure` or `internal-error`; `warn_list` and the
   ignore file no longer raise an `Info` finding to a warning.

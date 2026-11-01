@@ -2,8 +2,9 @@
 //!
 //! This is a line-oriented scanner, not a full YAML lexer: a `#` starts a
 //! comment when it is the first non-space character or follows whitespace
-//! outside single/double quotes. A `#` inside a literal or folded block scalar
-//! can be misinterpreted; that limitation is documented in `docs/OPEN_QUESTIONS.md`.
+//! outside single/double quotes on that line. Candidates that start inside a
+//! quoted or block scalar spanning several lines are discarded by the parser
+//! using the AST's scalar spans (H-D1).
 
 use ansilint_core::{LineIndex, Span};
 

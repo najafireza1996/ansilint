@@ -45,9 +45,20 @@ pub fn parse(source: &SourceFile) -> Result<Vec<Document>, YamlError> {
 }
 
 /// Moves each comment into the document whose start precedes it; comments
-/// before the first document (a header) belong to the first one.
+/// before the first document (a header) belong to the first one. A `#` that
+/// starts inside a quoted or block scalar is content, not a comment (H-D1).
 fn assign_comments(documents: &mut [Document], starts: &[u32], comments: Vec<crate::Comment>) {
+    let content = content_spans(documents);
     for comment in comments {
+        let position = comment.span.start;
+        let inside = content
+            .partition_point(|span| span.start <= position)
+            .checked_sub(1)
+            .and_then(|index| content.get(index))
+            .is_some_and(|span| position < span.end);
+        if inside {
+            continue;
+        }
         let owner = starts
             .partition_point(|start| *start <= comment.span.start)
             .saturating_sub(1);
@@ -55,6 +66,29 @@ fn assign_comments(documents: &mut [Document], starts: &[u32], comments: Vec<cra
             document.comments.push(comment);
         }
     }
+}
+
+/// Spans of quoted and block scalars, sorted. Plain scalars cannot contain
+/// ` #`, so only these can hide a `#` that the line scanner mistakes for a
+/// comment. Scalars never nest, so the spans do not overlap.
+fn content_spans(documents: &[Document]) -> Vec<Span> {
+    let mut spans = Vec::new();
+    let mut stack: Vec<&Node> = documents.iter().map(|document| &document.root).collect();
+    while let Some(node) = stack.pop() {
+        match node {
+            Node::Scalar(scalar) if scalar.style != ScalarStyle::Plain => spans.push(scalar.span),
+            Node::Sequence(sequence) => stack.extend(&sequence.items),
+            Node::Mapping(mapping) => stack.extend(
+                mapping
+                    .entries
+                    .iter()
+                    .flat_map(|entry| [&entry.key, &entry.value]),
+            ),
+            _ => {}
+        }
+    }
+    spans.sort_unstable();
+    spans
 }
 
 fn parse_document<'input>(

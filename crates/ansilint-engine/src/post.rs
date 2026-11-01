@@ -4,7 +4,7 @@ use std::path::Path;
 
 use ansilint_config::{Config, IgnoreFile};
 use ansilint_core::{Finding, Severity, Tag};
-use ansilint_yaml::SourceFile;
+use ansilint_yaml::{Document, SourceFile};
 
 use crate::PositionedFinding;
 
@@ -26,11 +26,11 @@ pub(crate) struct PostContext<'a> {
 #[must_use]
 pub(crate) fn keep(
     finding: &mut Finding,
-    line_text: Option<&str>,
+    line_comment: Option<&str>,
     context: &PostContext<'_>,
 ) -> bool {
     let skippable = !NON_SKIPPABLE.contains(&finding.tag.rule);
-    if skippable && line_text.is_some_and(|line| noqa_matches(line, &finding.tag)) {
+    if skippable && line_comment.is_some_and(|comment| noqa_matches(comment, &finding.tag)) {
         return false;
     }
     if let Some(ignore) = context.ignore {
@@ -110,18 +110,19 @@ fn noqa_matches(line: &str, tag: &Tag) -> bool {
     rest.split(',').any(|pattern| tag.matches(pattern.trim()))
 }
 
+/// `documents` supply the comment tokens for `# noqa` (H-D1): text that only
+/// looks like a comment inside a scalar never suppresses a finding.
 pub(crate) fn process(
     findings: Vec<Finding>,
     source: Option<&SourceFile>,
+    documents: &[Document],
     output_path: &Path,
-    config: &Config,
-    ignore: Option<&IgnoreFile>,
+    context: &PostContext<'_>,
 ) -> Vec<PositionedFinding> {
-    let context = PostContext { config, ignore };
     let mut results = Vec::new();
     for mut finding in findings {
         finding.path = output_path.to_path_buf();
-        let (line, col, line_text) = match source {
+        let (line, col, line_comment) = match source {
             Some(source) => {
                 let position = source
                     .line_index
@@ -130,12 +131,15 @@ pub(crate) fn process(
                 (
                     position.line,
                     position.col,
-                    source.line_index.line_text(source.as_str(), index),
+                    documents
+                        .iter()
+                        .find_map(|document| document.comments_on_line(index).next())
+                        .map(|comment| comment.text.as_str()),
                 )
             }
             None => (1, 1, None),
         };
-        if keep(&mut finding, line_text, &context) {
+        if keep(&mut finding, line_comment, context) {
             results.push(positioned(finding, line, col));
         }
     }

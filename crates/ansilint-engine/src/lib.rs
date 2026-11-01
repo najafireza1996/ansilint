@@ -349,12 +349,13 @@ fn process_file(
     max_file_bytes: u64,
 ) -> FileOutcome {
     let output_path = discovery::relative_output_path(&project.root, path);
+    let context = post::PostContext { config, ignore };
     let source = match loader::load(path, max_file_bytes) {
         Ok(source) => source,
         Err(error) => {
             let finding = load_error_finding(&error);
             return FileOutcome {
-                findings: post::process(vec![finding], None, &output_path, config, ignore),
+                findings: post::process(vec![finding], None, &[], &output_path, &context),
                 warnings: Vec::new(),
             };
         }
@@ -366,9 +367,9 @@ fn process_file(
                 findings: post::process(
                     vec![parser_error_finding(&error)],
                     Some(&source),
+                    &[],
                     &output_path,
-                    config,
-                    ignore,
+                    &context,
                 ),
                 warnings: Vec::new(),
             };
@@ -385,7 +386,7 @@ fn process_file(
     };
     let raw = run_rules(&cx, active_rules);
     FileOutcome {
-        findings: post::process(raw, Some(&source), &output_path, config, ignore),
+        findings: post::process(raw, Some(&source), &documents, &output_path, &context),
         warnings: Vec::new(),
     }
 }

@@ -157,3 +157,11 @@ fn reports_the_error_location() {
     assert!(error.span.start > 0);
     assert!(!error.message.is_empty());
 }
+
+#[test]
+fn hashes_inside_block_and_multiline_quoted_scalars_are_not_comments() {
+    let docs = documents(
+        "a: |\n  # not a comment\n  text\nb: >\n  # folded, not a comment\nc: \"x\n  # inside quotes\"\nd: 1 # real\n",
+    );
+    assert_eq!(contents(&docs[0]), ["real"]);
+}

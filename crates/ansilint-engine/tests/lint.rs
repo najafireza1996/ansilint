@@ -157,3 +157,14 @@ fn hundred_thousand_deep_nesting_is_a_parser_error_not_a_crash() {
     assert_eq!(result.findings[0].finding.tag.rule, "parser-error");
     assert!(result.findings[0].finding.message.contains("nesting depth"));
 }
+
+#[test]
+fn noqa_inside_a_scalar_does_not_suppress() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(
+        &directory.path().join("site.yml"),
+        "- {hosts: \"a # noqa: warning, x\"}\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.findings.len(), 1, "the quoted text is not a comment");
+}

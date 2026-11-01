@@ -168,3 +168,52 @@ fn noqa_inside_a_scalar_does_not_suppress() {
     let result = lint(&options(directory.path())).expect("lint");
     assert_eq!(result.findings.len(), 1, "the quoted text is not a comment");
 }
+
+#[test]
+#[allow(clippy::format_collect, reason = "readable one-off fixture builder")]
+fn billion_laughs_aliases_are_never_expanded() {
+    // Nine levels of ten aliases each would expand to 10^9 nodes.
+    let text: String = (0..10)
+        .map(|level| {
+            let items = if level == 0 {
+                "x".to_string()
+            } else {
+                format!("*l{}", level - 1)
+            };
+            format!(
+                "l{level}: &l{level} [{}]\n",
+                [items.as_str(); 10].join(", ")
+            )
+        })
+        .collect();
+    // The same bomb inside an aliased task's vars, reused 2000 times.
+    let flow: Vec<String> = text.lines().map(str::to_string).collect();
+    let tasks = format!(
+        "- &t\n  name: t\n  ansible.builtin.debug: {{msg: x}}\n  vars: {{{}}}\n{}",
+        flow.join(", "),
+        "- *t\n- <<: *t\n".repeat(1000)
+    );
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("bomb.yml"), &text);
+    write(&directory.path().join("roles/x/tasks/main.yml"), &tasks);
+    let started = std::time::Instant::now();
+    let result = lint(&options(directory.path())).expect("lint");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(result.files_linted, 2);
+    assert!(result.findings.is_empty(), "{:?}", result.findings);
+}
+
+#[test]
+fn ten_megabyte_input_is_a_clean_refusal() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    let anchors = "a: &a [x]\n".to_string() + &"b: *a\n".repeat(2_000_000);
+    write(&directory.path().join("huge.yml"), &anchors);
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(result.findings.len(), 1);
+    assert_eq!(result.findings[0].finding.tag.rule, "load-failure");
+    assert!(result.findings[0].finding.message.contains("byte limit"));
+}

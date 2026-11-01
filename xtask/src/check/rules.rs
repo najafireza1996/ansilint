@@ -31,15 +31,39 @@ pub(super) fn check_rules_consistency(root: &Path) -> Result<Vec<String>> {
             ));
         }
     }
-    for id in &parity_ids {
-        if !rule_ids.contains(id) {
-            failures.push(format!(
-                "parity.toml declares rule `{id}` but no rule file exists"
-            ));
-        }
-    }
+    failures.extend(check_parity_statuses(root)?);
     for id in &rule_ids {
         failures.extend(check_rule_assets(root, id)?);
+    }
+    Ok(failures)
+}
+
+/// `parity.toml` lists the whole upstream catalog (H-D7): `implemented` and
+/// `partial` entries need a rule file, and an existing rule may not be marked
+/// `planned` or `not-planned`.
+pub(super) fn check_parity_statuses(root: &Path) -> Result<Vec<String>> {
+    let rule_ids = rule_ids(&root.join("crates/ansilint-rules/src/rules"))?;
+    let path = root.join("parity.toml");
+    let text =
+        fs::read_to_string(&path).with_context(|| format!("failed to read {}", path.display()))?;
+    let parity: toml::Value =
+        toml::from_str(&text).with_context(|| format!("failed to parse {}", path.display()))?;
+    let mut failures = Vec::new();
+    let rules = parity.get("rules").and_then(toml::Value::as_table);
+    for (id, spec) in rules.into_iter().flatten() {
+        let status = spec
+            .get("status")
+            .and_then(toml::Value::as_str)
+            .unwrap_or("planned");
+        let shipped = matches!(status, "implemented" | "partial");
+        if shipped != rule_ids.contains(id) {
+            let reason = if shipped {
+                "no rule file exists"
+            } else {
+                "the rule exists"
+            };
+            failures.push(format!("parity.toml marks `{id}` as {status} but {reason}"));
+        }
     }
     Ok(failures)
 }

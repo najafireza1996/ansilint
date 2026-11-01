@@ -1,6 +1,8 @@
 # Rule parity relative to upstream ansible-lint.
 # status: implemented | partial | planned | not-planned
 # Regenerate docs/PARITY.md with `cargo xtask gen-parity`.
+# Every upstream rule from ANSILINT_SPEC section 5 is listed (H-D7), so the
+# percentage is measured against the full catalog, not just what exists.
 
 [rules.internal-error]
 status = "implemented"
@@ -25,3 +27,242 @@ status = "implemented"
 phase = 1
 upstream_tags = ["warning"]
 notes = "Meta-rule for non-fatal notices; empty playbooks in Phase 1."
+
+[rules.syntax-check]
+status = "planned"
+phase = 6
+notes = "Upstream runs ansible-playbook --syntax-check; a static equivalent (schema + model) is planned and will be marked partial."
+
+[rules.no-tabs]
+status = "planned"
+phase = 2
+notes = ""
+
+[rules.playbook-extension]
+status = "planned"
+phase = 2
+notes = ""
+
+[rules.role-name]
+status = "planned"
+phase = 2
+notes = ""
+
+[rules.yaml]
+status = "planned"
+phase = 2
+notes = "Native subset of upstream's embedded yamllint config."
+
+[rules.name]
+status = "planned"
+phase = 2
+notes = "Sub-tags missing, play, casing, template; prefix is opt-in."
+
+[rules.var-naming]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.key-order]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.literal-compare]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.no-jinja-when]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.partial-become]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.command-instead-of-module]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.command-instead-of-shell]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.inline-env-var]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.deprecated-bare-vars]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.deprecated-local-action]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.deprecated-module]
+status = "planned"
+phase = 5
+notes = "Needs the module index."
+
+[rules.no-free-form]
+status = "planned"
+phase = 5
+notes = "Needs the module index."
+
+[rules.jinja]
+status = "planned"
+phase = 10
+notes = "Needs the Jinja scanner."
+
+[rules.schema]
+status = "planned"
+phase = 6
+notes = "Mandatory and non-skippable once implemented."
+
+[rules.avoid-implicit]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.latest]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.package-latest]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.risky-file-permissions]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.risky-octal]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.risky-shell-pipe]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.galaxy]
+status = "planned"
+phase = 6
+notes = ""
+
+[rules.ignore-errors]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.meta-incorrect]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.meta-no-tags]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.meta-video-links]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.meta-runtime]
+status = "planned"
+phase = 6
+notes = ""
+
+[rules.no-changed-when]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.no-handler]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.no-relative-paths]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.fqcn]
+status = "planned"
+phase = 5
+notes = "Needs the module index."
+
+[rules.sanity]
+status = "not-planned"
+notes = "Requires ansible-test; outside a Python-free linter."
+
+[rules.args]
+status = "planned"
+phase = 7
+notes = "Index-based; unknown modules are skipped, never guessed."
+
+[rules.complexity]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.empty-string-compare]
+status = "planned"
+phase = 3
+notes = "Opt-in."
+
+[rules.galaxy-version-incorrect]
+status = "planned"
+phase = 6
+notes = "Opt-in."
+
+[rules.jinja-template-extension]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.loop-var-prefix]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.no-log-password]
+status = "planned"
+phase = 3
+notes = "Opt-in."
+
+[rules.no-prompting]
+status = "planned"
+phase = 3
+notes = ""
+
+[rules.no-same-owner]
+status = "planned"
+phase = 3
+notes = "Opt-in."
+
+[rules.only-builtins]
+status = "planned"
+phase = 5
+notes = "Opt-in; needs the module index."
+
+[rules.run-once]
+status = "planned"
+phase = 3
+notes = ""

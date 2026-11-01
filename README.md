@@ -1,8 +1,9 @@
 # ansilint
 
-**Status: pre-alpha.** Phase 1 is implemented: a working lint pipeline, the
-`min`-profile rules, configuration, `# noqa`, PEP8/JSON output and a CLI. Phase 2
-adds the text/format rule batch; the full upstream rule catalog is not covered yet.
+**Status: pre-alpha, not released.** Phase 1 (lint pipeline, the four `min`-profile
+meta rules, configuration, `# noqa`, ignore files, PEP8/JSON output, CLI) is
+implemented and in its Phase 1.5 hardening review. Rule parity: **4 / 52** upstream
+rules ([details](docs/PARITY.md)). It cannot replace `ansible-lint` yet.
 
 A fast, single-binary Ansible linter written in Rust that needs no Python and no
 `ansible-core` — and can run the checks that other fast linters skip, because it
@@ -16,16 +17,17 @@ ships its own module index and schemas.
 - The reference linter is Python-based, needs `ansible-core`, and some checks work
   by importing and executing module code.
 - Existing fast alternatives cover only the purely static subset of rules.
-- `ansilint` is a single static binary: same config files, same rule IDs, same
-  `# noqa` and ignore-file semantics, same profiles — plus offline schema
-  validation, an embedded module index and a language server.
+- `ansilint` aims to be a single static binary: same config files, same rule IDs,
+  same `# noqa` and ignore-file semantics, same profiles — plus offline schema
+  validation, an embedded module index and a language server (Phases 5–9; none of
+  these exist yet).
 
 ## Status and roadmap
 
 | Phase | Deliverable | State |
 |---|---|---|
 | 0 | Workspace, tooling, CI, fitness functions | done |
-| 1 | Core engine and CLI skeleton (`min` profile) | implemented, pending release |
+| 1 | Core engine and CLI skeleton (`min` profile) | implemented; Phase 1.5 hardening under review, not tagged |
 | 2 | Text/format rules (`yaml`, `name`, …) | planned |
 | 3 | Static semantic rules and profiles | planned |
 | 4 | Outputs, integrations, `v0.1.0` | planned |
@@ -36,8 +38,8 @@ ships its own module index and schemas.
 | 9 | Language server | planned |
 | 10 | `jinja` rules, hardening, `v1.0.0` | planned |
 
-The generated [parity table](docs/PARITY.md) will be the front page number once
-rules land.
+The generated [parity table](docs/PARITY.md) lists every upstream rule with its
+status and planned phase.
 
 ## Build from source
 

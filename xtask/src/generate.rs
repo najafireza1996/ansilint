@@ -26,7 +26,7 @@ pub(crate) fn gen_parity() -> Result<()> {
     let target = workspace_root.join("docs/PARITY.md");
     fs::write(&target, output).with_context(|| format!("failed to write {}", target.display()))?;
     println!(
-        "wrote {} ({implemented}/{total} tracked rules implemented)",
+        "wrote {} ({implemented} / {total} upstream rules implemented)",
         display_relative(&workspace_root, &target)
     );
     Ok(())
@@ -72,10 +72,10 @@ fn render_parity(rows: &[ParityRow], implemented: usize, total: usize) -> String
     );
     let _ = writeln!(
         output,
-        "Tracked rules: {implemented}/{total} implemented ({percentage}%)\n"
+        "Implemented: {implemented} / {total} upstream rules ({percentage}%)\n"
     );
     output.push_str(
-        "This table covers rules tracked in `parity.toml`; the full upstream catalog is added phase by phase.\n\n",
+        "Every upstream rule is listed, so the percentage is measured against the full catalog.\n\n",
     );
     output.push_str("| Rule | Status | Phase | Notes |\n|---|---|---|---|\n");
     for row in rows {

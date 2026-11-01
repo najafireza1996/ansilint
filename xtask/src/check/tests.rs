@@ -9,7 +9,7 @@ use tempfile::TempDir;
 use super::dependencies::{check_dependency_edges, check_pure_crates};
 use super::hygiene::{check_forbidden_names, check_markers, check_panic_strategy};
 use super::load_architecture;
-use super::rules::{check_fixture_expectations, check_rule_doc_links};
+use super::rules::{check_fixture_expectations, check_parity_statuses, check_rule_doc_links};
 
 fn write(path: &Path, contents: &str) {
     if let Some(parent) = path.parent() {
@@ -168,5 +168,27 @@ fn rejects_fixtures_without_expected_findings() {
     assert!(
         matches!(failures.as_slice(), [only] if only.contains("expected/fail-tab.json")),
         "got {failures:?}"
+    );
+}
+
+#[test]
+fn parity_statuses_must_match_rule_files() {
+    let temp = workspace();
+    let root = temp.path();
+    write(
+        &root.join("crates/ansilint-rules/src/rules/no_tabs.rs"),
+        "//! no-tabs\n",
+    );
+    write(
+        &root.join("parity.toml"),
+        "[rules.no-tabs]\nstatus = \"planned\"\n\n[rules.yaml]\nstatus = \"implemented\"\n\n[rules.fqcn]\nstatus = \"planned\"\n",
+    );
+    let failures = check_parity_statuses(root).expect("run parity check");
+    assert_eq!(
+        failures,
+        [
+            "parity.toml marks `no-tabs` as planned but the rule exists",
+            "parity.toml marks `yaml` as implemented but no rule file exists",
+        ]
     );
 }

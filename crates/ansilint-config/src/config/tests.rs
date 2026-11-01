@@ -115,7 +115,7 @@ fn reports_keys_that_are_accepted_but_not_implemented_yet() {
 
 #[test]
 fn parses_upstream_kinds_entries() {
-    // Verbatim shape from upstream's own .ansible-lint (VERIFY-UPSTREAM done).
+    // Verbatim shape from upstream's own .ansible-lint (verified: OPEN_QUESTIONS #22).
     let parsed =
         parse("kinds:\n  - yaml: \"**/*.yaml-too\"\n  - playbook: \"**/examples/*.{yml,yaml}\"\n");
     let kinds: Vec<(&str, &str)> = parsed

@@ -192,3 +192,32 @@ fn parity_statuses_must_match_rule_files() {
         ]
     );
 }
+
+#[test]
+fn verify_markers_must_name_an_open_question_row() {
+    let temp = workspace();
+    let root = temp.path();
+    write(
+        &root.join("docs/OPEN_QUESTIONS.md"),
+        "| # | Question |\n|---|---|\n| 7 | exit codes |\n",
+    );
+    let marker = concat!("VERIFY", "-UPSTREAM");
+    let pending = concat!("TO", "DO");
+    write(
+        &root.join("crates/a/src/lib.rs"),
+        &format!(
+            "// {marker}(Q7) documented\n// {marker}(Q99) missing row\n// {marker} bare\n// {pending}(verify) old style\n"
+        ),
+    );
+    let failures = check_markers(root).expect("run marker check");
+    assert!(
+        matches!(
+            failures.as_slice(),
+            [missing, bare, old]
+                if missing.contains("lib.rs:2") && missing.contains("Q99")
+                    && bare.contains("lib.rs:3")
+                    && old.contains("lib.rs:4")
+        ),
+        "got {failures:?}"
+    );
+}

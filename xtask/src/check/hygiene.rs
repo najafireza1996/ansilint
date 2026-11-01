@@ -18,6 +18,9 @@ const PENDING: &str = concat!("TO", "DO");
 const BROKEN_NOTE: &str = concat!("FIX", "ME");
 const TRIPLE_X: &str = concat!("X", "XX");
 const SMELL: &str = concat!("HA", "CK");
+/// Marker for unverified upstream behavior (H-E4): it must be followed by
+/// `(Q<n>)`, where `<n>` is a row in `docs/OPEN_QUESTIONS.md`.
+const VERIFY: &str = concat!("VERIFY", "-UPSTREAM");
 const IGNORE_ATTR: &str = concat!("#[ign", "ore");
 const GENERATED: &str = concat!("@", "generated");
 
@@ -117,6 +120,8 @@ pub(super) fn check_markers(root: &Path) -> Result<Vec<String>> {
     let mut failures = Vec::new();
     let tech_debt_path = root.join("docs/TECH_DEBT.md");
     let tech_debt = fs::read_to_string(&tech_debt_path).unwrap_or_default();
+    let open_questions =
+        fs::read_to_string(root.join("docs/OPEN_QUESTIONS.md")).unwrap_or_default();
 
     for base in ["crates", "xtask"] {
         for path in walk_files(&root.join(base), "rs")? {
@@ -130,6 +135,7 @@ pub(super) fn check_markers(root: &Path) -> Result<Vec<String>> {
                         "{location}: banned marker; use {PENDING}(#<issue>) and document it"
                     ));
                 }
+                check_verify_markers(line, &location, &open_questions, &mut failures);
                 check_pending_markers(line, &location, &tech_debt, &mut failures);
                 if line.contains(IGNORE_ATTR) && !has_issue_reference(line) {
                     failures.push(format!("{location}: ignored test needs an issue reference"));
@@ -138,6 +144,37 @@ pub(super) fn check_markers(root: &Path) -> Result<Vec<String>> {
         }
     }
     Ok(failures)
+}
+
+fn check_verify_markers(
+    line: &str,
+    location: &str,
+    open_questions: &str,
+    failures: &mut Vec<String>,
+) {
+    for (position, _) in line.match_indices(VERIFY) {
+        let after = line.get(position + VERIFY.len()..).unwrap_or_default();
+        let digits: String = after
+            .strip_prefix("(Q")
+            .map(|rest| rest.chars().take_while(char::is_ascii_digit).collect())
+            .unwrap_or_default();
+        if digits.is_empty()
+            || !after
+                .get(2 + digits.len()..)
+                .is_some_and(|tail| tail.starts_with(')'))
+        {
+            failures.push(format!(
+                "{location}: {VERIFY} must be written as {VERIFY}(Q<n>) naming a docs/OPEN_QUESTIONS.md row"
+            ));
+        } else if !open_questions
+            .lines()
+            .any(|row| row.starts_with(&format!("| {digits} |")))
+        {
+            failures.push(format!(
+                "{location}: {VERIFY}(Q{digits}) has no row {digits} in docs/OPEN_QUESTIONS.md"
+            ));
+        }
+    }
 }
 
 fn check_pending_markers(line: &str, location: &str, tech_debt: &str, failures: &mut Vec<String>) {

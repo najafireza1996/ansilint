@@ -2,7 +2,9 @@
 
 Questions that block or constrain implementation. Until an item is verified, the
 code implements the conservative option (fewer findings) and marks the spot with
-`TODO(verify)` only internally — never a guessed upstream behavior.
+`VERIFY-UPSTREAM(Q<n>)`, where `<n>` is the row number below (H-E4). `cargo xtask
+check` rejects the marker without a row number, with a number that has no row,
+and the old `TODO(verify)` form. Never guess upstream behavior.
 
 ## Open
 
@@ -23,6 +25,7 @@ code implements the conservative option (fewer findings) and marks the spot with
 | 19 | The walker skips hidden files and directories (`ignore` standard filters), so `.github/` and `.cache/` are never linted. Upstream lints hidden paths (users exclude `.github/` explicitly). Matching it would surface findings in CI workflow files once `yaml` lands. | Discovery | Keep skipping hidden paths (fewer findings) until a maintainer decides; then flip with a CHANGELOG entry | maintainer |
 | 21 | Precedence when both `.ansible-lint-ignore` and `.config/ansible-lint-ignore.txt` exist: upstream only says the file "should reside adjacent to the config file". We take `.ansible-lint-ignore` first (next to the config, then at the project root). | Ignore file | Keep; all single-file layouts are pinned by `finds_the_ignore_file_in_every_documented_layout` | maintainer |
 | 23 | H-D6 sub-tag filtering: `enable_list: [rule[sub]]` maps to the owning rule today (`enable_list_sub_tags_map_to_the_owning_rule`). Keeping only that sub-tag needs per-sub-tag opt-in metadata (`name[prefix]` is an opt-in sub-tag of the non-opt-in `name` rule), which no Phase 1 rule has. | Phase 2 `name` rule | Add sub-tag opt-in to `RuleMeta` with the `name` rule; until then no opt-in sub-tag exists, so nothing can over-report | maintainer |
+| 26 | The user named `phase-1-hardening` as the working branch, but that branch is the stale pre-split line (10 commits superseded by `phase-1-split` → `main`) and lacks the 40 Batch A–D commits. Committing there would require a merge or rebase, which was ruled out. | Batch E session | Batch E continues on `phase-1.5-batch-a`; the maintainer decides which branch to keep | maintainer |
 | 15 | ~~The line-oriented comment scanner can see a `#` inside a literal/folded block scalar as a comment~~ **Resolved (H-D1):** candidates inside quoted or block scalars are discarded using AST scalar spans, and `# noqa` reads only real comment tokens. | — | — | — |
 
 ## Verified
@@ -49,4 +52,4 @@ them.
    upstream repository at a pinned commit).
 2. Write the verified facts here, with the URL and date.
 3. Add a regression test that fails if the behavior changes.
-4. Only then remove the `TODO(verify)` marker and update the rule documentation.
+4. Only then remove the `VERIFY-UPSTREAM(Q<n>)` marker and update the rule documentation.

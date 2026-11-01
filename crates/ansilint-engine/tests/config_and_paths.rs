@@ -284,3 +284,21 @@ fn generated_ignore_files_round_trip_paths_with_spaces() {
         .collect();
     assert_eq!(paths, ["my dir/site #1.yml"]);
 }
+
+#[test]
+fn invalid_kinds_entries_produce_notices() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("site.yml"), "- hosts: all\n");
+    write(
+        &directory.path().join(".ansible-lint"),
+        "kinds:\n  - playbok: \"**/*.yml\"\n  - tasks: \"[unclosed\"\n",
+    );
+    let result = lint(&options(directory.path())).expect("lint");
+    assert_eq!(
+        result.warnings,
+        [
+            "kinds: unknown file kind `playbok`",
+            "kinds: invalid glob `[unclosed` for `tasks`",
+        ]
+    );
+}

@@ -16,7 +16,7 @@ fn defaults_are_ordered_from_specific_to_generic() {
 
 #[test]
 fn classifies_role_files() {
-    let classifier = Classifier::new(&[]);
+    let classifier = Classifier::new(&[]).0;
     let root = std::path::Path::new("/project");
     assert_eq!(
         classifier.classify(root, &root.join("roles/x/tasks/main.yml")),
@@ -48,7 +48,7 @@ fn yaml_extensions_are_case_insensitive() {
 
 #[test]
 fn directory_patterns_are_case_sensitive() {
-    let classifier = Classifier::new(&[]);
+    let classifier = Classifier::new(&[]).0;
     let root = std::path::Path::new("/project");
     assert_eq!(
         classifier.classify(root, &root.join("roles/x/Tasks/main.yml")),

@@ -138,7 +138,8 @@ pub fn lint(options: &LintOptions) -> Result<LintResult, EngineError> {
     warnings.extend(post::unmatched_tag_notices(&config.tags));
     let ignore_file_path = discover_ignore_file(options, &project);
     let ignore = load_ignore_file(ignore_file_path.as_deref(), options.max_file_bytes)?;
-    let classifier = Classifier::new(&config.kinds);
+    let (classifier, kind_notices) = Classifier::new(&config.kinds);
+    warnings.extend(kind_notices);
     let excludes = ExcludeSet::new(
         &config,
         &project.config_base,

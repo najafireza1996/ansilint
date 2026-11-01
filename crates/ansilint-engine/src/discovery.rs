@@ -193,16 +193,23 @@ pub(crate) struct Classifier {
 }
 
 impl Classifier {
-    /// Builds a classifier from user patterns followed by defaults.
+    /// Builds a classifier from user patterns followed by defaults. Unknown
+    /// kind names and invalid globs are skipped with a notice (H-D4).
     #[must_use]
-    pub(crate) fn new(user: &[KindPattern]) -> Self {
+    pub(crate) fn new(user: &[KindPattern]) -> (Self, Vec<String>) {
         let mut rules = Vec::new();
+        let mut notices = Vec::new();
         for pattern in user {
             let Some(kind) = FileKind::from_name(&pattern.kind) else {
+                notices.push(format!("kinds: unknown file kind `{}`", pattern.kind));
                 continue;
             };
-            if let Ok(glob) = Glob::new(&pattern.glob) {
-                rules.push((kind, glob.compile_matcher()));
+            match Glob::new(&pattern.glob) {
+                Ok(glob) => rules.push((kind, glob.compile_matcher())),
+                Err(_) => notices.push(format!(
+                    "kinds: invalid glob `{}` for `{}`",
+                    pattern.glob, pattern.kind
+                )),
             }
         }
         for (kind, pattern) in default_patterns() {
@@ -210,7 +217,7 @@ impl Classifier {
                 rules.push((*kind, glob.compile_matcher()));
             }
         }
-        Self { rules }
+        (Self { rules }, notices)
     }
 
     /// Returns the first matching kind, or [`FileKind::Unknown`].

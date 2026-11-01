@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- An unknown kind name or invalid glob in `kinds` now prints a notice instead of
+  being skipped silently.
 - `kinds` entries now use the upstream `- <kind>: <glob>` shape; configs that
   set `kinds` failed to load before.
 - `# noqa` is read from real comment tokens only: text such as

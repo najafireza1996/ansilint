@@ -19,6 +19,10 @@ pub(crate) struct PostContext<'a> {
 }
 
 /// Returns `false` when a finding should be dropped; otherwise adjusts severity.
+///
+/// Non-skippable findings (H-D2) are never dropped by `# noqa`, `skip_list`,
+/// an ignore-file `skip` entry or a `tags` filter; ignore entries and
+/// `warn_list` may still downgrade them. Severity only ever goes down (H-D3).
 #[must_use]
 pub(crate) fn keep(
     finding: &mut Finding,
@@ -32,21 +36,29 @@ pub(crate) fn keep(
     if let Some(ignore) = context.ignore {
         let path = finding.path.to_string_lossy().replace('\\', "/");
         match ignore.disposition(&path, &finding.tag) {
-            Some(true) => return false,
-            Some(false) => finding.severity = Severity::Warning,
+            Some(true) if skippable => return false,
+            Some(_) => downgrade(finding),
             None => {}
         }
     }
-    if matches_any(&finding.tag, &context.config.skip_list) {
+    if skippable && matches_any(&finding.tag, &context.config.skip_list) {
         return false;
     }
-    if !context.config.tags.is_empty() && !tag_selected(&finding.tag, &context.config.tags) {
+    if skippable
+        && !context.config.tags.is_empty()
+        && !tag_selected(&finding.tag, &context.config.tags)
+    {
         return false;
     }
     if matches_any(&finding.tag, &context.config.warn_list) {
-        finding.severity = Severity::Warning;
+        downgrade(finding);
     }
     true
+}
+
+/// Lowers a finding to at most a warning; `Info` stays `Info`.
+fn downgrade(finding: &mut Finding) {
+    finding.severity = finding.severity.min(Severity::Warning);
 }
 
 fn matches_any(tag: &Tag, patterns: &[String]) -> bool {
@@ -247,6 +259,50 @@ mod tests {
         assert!(keep(&mut parser_error, None, &context));
         let mut warning = finding("warning", Severity::Warning);
         assert!(!keep(&mut warning, None, &context));
+    }
+
+    #[test]
+    fn non_skippable_findings_survive_every_drop_request() {
+        let ignore = IgnoreFile::parse("a.yml parser-error skip\n").expect("ignore file");
+        let config = Config {
+            skip_list: vec!["load-failure".to_string()],
+            tags: vec!["warning".to_string()],
+            ..Config::default()
+        };
+        let context = PostContext {
+            config: &config,
+            ignore: Some(&ignore),
+        };
+        let mut parser_error = finding("parser-error", Severity::Error);
+        assert!(keep(&mut parser_error, None, &context), "ignore skip");
+        assert_eq!(parser_error.severity, Severity::Warning, "but downgraded");
+        let mut load_failure = finding("load-failure", Severity::Error);
+        assert!(keep(&mut load_failure, None, &context), "skip_list / tags");
+        let mut internal = finding("internal-error", Severity::Error);
+        assert!(keep(&mut internal, None, &context), "tags filter");
+    }
+
+    #[test]
+    fn severity_is_only_ever_lowered() {
+        let ignore = IgnoreFile::parse("a.yml name\n").expect("ignore file");
+        let config = Config {
+            warn_list: vec!["yaml".to_string()],
+            ..Config::default()
+        };
+        let context = PostContext {
+            config: &config,
+            ignore: Some(&ignore),
+        };
+        let mut warned = finding("yaml", Severity::Info);
+        assert!(keep(&mut warned, None, &context));
+        assert_eq!(warned.severity, Severity::Info, "warn_list must not raise");
+        let mut ignored = finding("name", Severity::Info);
+        assert!(keep(&mut ignored, None, &context));
+        assert_eq!(
+            ignored.severity,
+            Severity::Info,
+            "ignore file must not raise"
+        );
     }
 
     #[test]

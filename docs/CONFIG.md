@@ -55,6 +55,14 @@ Every bullet is `VERIFY-UPSTREAM` until a test pins it. Phase 1 has tests for
 "lists extend / scalars override", unknown and ignored keys, and the ignore-file
 grammar.
 
+## Non-skippable rules and severity
+
+`internal-error`, `parser-error` and `load-failure` (and `schema` once it
+exists) are never hidden: `# noqa`, `skip_list`, an ignore-file `skip` entry
+and a `tags` filter do not drop them. An ignore-file entry or `warn_list` may
+still downgrade them to a warning. Downgrades only ever lower severity: an
+`Info` finding stays `Info`.
+
 ## Paths
 
 All paths (`-c`, inputs, `exclude_paths`, `--exclude`) are made absolute and

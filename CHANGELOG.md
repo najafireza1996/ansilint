@@ -9,6 +9,9 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- `skip_list`, ignore-file `skip` entries and `tags` no longer hide
+  `parser-error`, `load-failure` or `internal-error`; `warn_list` and the
+  ignore file no longer raise an `Info` finding to a warning.
 - `--generate-ignore` quotes paths with spaces or `#`, so the generated file
   parses back to the same entries.
 - `exclude_paths` now applies when the config is given as a relative path such

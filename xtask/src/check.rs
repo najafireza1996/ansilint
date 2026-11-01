@@ -24,7 +24,10 @@ use hygiene::{
     check_adrs, check_crate_docs, check_file_sizes, check_forbidden_names, check_markers,
     check_panic_strategy,
 };
-use rules::{check_rule_doc_links, check_rule_id_matches, check_rules_consistency};
+use rules::{
+    check_fixture_expectations, check_rule_doc_links, check_rule_id_matches,
+    check_rules_consistency,
+};
 
 /// Collected results of all workspace checks.
 #[derive(Debug, Default)]
@@ -68,6 +71,7 @@ pub(crate) fn run_checks(root: &Path) -> Result<Report> {
     report.failures.extend(check_rules_consistency(root)?);
     report.failures.extend(check_rule_id_matches(root)?);
     report.failures.extend(check_rule_doc_links(root)?);
+    report.failures.extend(check_fixture_expectations(root)?);
     report.failures.extend(check_adrs(root)?);
     report.failures.extend(check_crate_docs(root)?);
 

@@ -1,0 +1,9 @@
+[
+  {
+    "col": 1,
+    "line": 3,
+    "message": "rule `test-panic-probe` panicked: panic probe triggered",
+    "severity": "Error",
+    "tag": "internal-error"
+  }
+]

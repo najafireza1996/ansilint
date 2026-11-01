@@ -61,6 +61,54 @@ fn check_rule_assets(root: &Path, id: &str) -> Result<Vec<String>> {
     Ok(failures)
 }
 
+/// Every rule fixture input must have a checked-in expected-findings file
+/// (H-C9), so a fixture can never sit unexecuted.
+pub(super) fn check_fixture_expectations(root: &Path) -> Result<Vec<String>> {
+    let fixtures = root.join("tests/fixtures");
+    if !fixtures.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut failures = Vec::new();
+    for rule_dir in read_entries(&fixtures)?
+        .into_iter()
+        .map(|entry| entry.path())
+    {
+        let rule = rule_dir
+            .file_name()
+            .and_then(OsStr::to_str)
+            .unwrap_or_default();
+        if !rule_dir.is_dir() || rule.starts_with('_') {
+            continue;
+        }
+        for kind in ["fail", "pass", "noqa"] {
+            let kind_dir = rule_dir.join(kind);
+            if !kind_dir.is_dir() {
+                continue;
+            }
+            for input in read_entries(&kind_dir)?
+                .into_iter()
+                .map(|entry| entry.path())
+            {
+                let stem = input
+                    .file_stem()
+                    .and_then(OsStr::to_str)
+                    .unwrap_or_default();
+                let expected = format!("expected/{kind}-{stem}.json");
+                if !rule_dir.join(&expected).is_file() {
+                    failures.push(format!(
+                        "tests/fixtures/{rule}/{kind}/{} has no {expected}",
+                        input
+                            .file_name()
+                            .and_then(OsStr::to_str)
+                            .unwrap_or_default()
+                    ));
+                }
+            }
+        }
+    }
+    Ok(failures)
+}
+
 /// Every relative link in `docs/rules/README.md` must point at an existing
 /// file (H-C16); generated links once used Rust file stems instead of ids.
 pub(super) fn check_rule_doc_links(root: &Path) -> Result<Vec<String>> {

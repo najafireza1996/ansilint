@@ -112,3 +112,71 @@ pub const CONTRACT_INPUTS: &[&str] = &[
     "---\na: 1\n---\n- hosts: all\n...\n",
     "key: \"tab\\there\"\r\nother: \u{e9}\u{65e5}\r\n",
 ];
+
+/// One rule fixture: `tests/fixtures/<rule>/<kind>/<case>.yml` and its
+/// expected findings at `tests/fixtures/<rule>/expected/<kind>-<case>.json`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FixtureCase {
+    /// Rule id (the fixture directory name).
+    pub rule: String,
+    /// `fail`, `pass` or `noqa`.
+    pub kind: String,
+    /// The YAML input.
+    pub input: std::path::PathBuf,
+    /// The expected findings file.
+    pub expected: std::path::PathBuf,
+}
+
+/// Fixture kinds that hold YAML inputs (H-C9).
+pub const FIXTURE_KINDS: &[&str] = &["fail", "pass", "noqa"];
+
+/// Discovers every rule fixture under `root` (`tests/fixtures`), sorted.
+/// Directories starting with `_` (such as `_valid`) are not rule fixtures.
+///
+/// # Errors
+///
+/// Returns an I/O error when a directory cannot be read.
+pub fn fixture_cases(root: &std::path::Path) -> std::io::Result<Vec<FixtureCase>> {
+    let mut cases = Vec::new();
+    for rule_dir in sorted_entries(root)? {
+        let rule = file_name(&rule_dir);
+        if !rule_dir.is_dir() || rule.starts_with('_') {
+            continue;
+        }
+        for kind in FIXTURE_KINDS {
+            let kind_dir = rule_dir.join(kind);
+            if !kind_dir.is_dir() {
+                continue;
+            }
+            for input in sorted_entries(&kind_dir)? {
+                let Some(stem) = input.file_stem().map(|stem| stem.to_string_lossy()) else {
+                    continue;
+                };
+                let expected = rule_dir
+                    .join("expected")
+                    .join(format!("{kind}-{stem}.json"));
+                cases.push(FixtureCase {
+                    rule: rule.clone(),
+                    kind: (*kind).to_string(),
+                    input,
+                    expected,
+                });
+            }
+        }
+    }
+    Ok(cases)
+}
+
+fn sorted_entries(directory: &std::path::Path) -> std::io::Result<Vec<std::path::PathBuf>> {
+    let mut paths = std::fs::read_dir(directory)?
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    paths.sort();
+    Ok(paths)
+}
+
+fn file_name(path: &std::path::Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}

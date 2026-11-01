@@ -1,7 +1,9 @@
-//! Fixture-driven regression tests for the min-profile rules.
+//! H-C9: every rule fixture runs through the engine and must match its
+//! checked-in `expected/<kind>-<case>.json`. Regenerate with
+//! `ANSILINT_BLESS=1 cargo test -p ansilint-engine --all-features --test fixtures`
+//! and review the diff like any snapshot (ENG-38).
 
 #![allow(
-    clippy::assert_is_empty,
     clippy::expect_used,
     reason = "tests use fixed fixtures and panic on broken assertions"
 )]
@@ -9,6 +11,7 @@
 use std::path::{Path, PathBuf};
 
 use ansilint_engine::{lint, LintOptions};
+use ansilint_testing::fixture_cases;
 
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -17,57 +20,53 @@ fn workspace_root() -> PathBuf {
         .expect("workspace root")
 }
 
-fn fixture(rule: &str, kind: &str, name: &str) -> PathBuf {
-    workspace_root()
-        .join("tests/fixtures")
-        .join(rule)
-        .join(kind)
-        .join(name)
-}
-
-fn findings_for(path: &Path) -> Vec<String> {
+fn findings_json(input: &Path) -> String {
     let mut options = LintOptions::new(workspace_root());
-    options.paths = vec![path.to_path_buf()];
-    lint(&options)
+    options.paths = vec![input.to_path_buf()];
+    let findings: Vec<serde_json::Value> = lint(&options)
         .expect("lint fixture")
         .findings
-        .into_iter()
-        .map(|finding| finding.finding.tag.to_string())
-        .collect()
+        .iter()
+        .map(|positioned| {
+            serde_json::json!({
+                "tag": positioned.finding.tag.to_string(),
+                "line": positioned.line,
+                "col": positioned.col,
+                "severity": format!("{:?}", positioned.finding.severity),
+                "message": positioned.finding.message,
+            })
+        })
+        .collect();
+    let mut json = serde_json::to_string_pretty(&findings).expect("serialize");
+    json.push('\n');
+    json
 }
 
 #[test]
-fn parser_error_fixtures() {
-    assert_eq!(
-        findings_for(&fixture("parser-error", "fail", "bad.yml")),
-        ["parser-error"]
-    );
-    assert!(findings_for(&fixture("parser-error", "pass", "ok.yml")).is_empty());
-    assert_eq!(
-        findings_for(&fixture("parser-error", "noqa", "bad.yml")),
-        ["parser-error"]
-    );
-}
-
-#[test]
-fn load_failure_fixtures() {
-    assert_eq!(
-        findings_for(&fixture("load-failure", "fail", "non-utf8.yml")),
-        ["load-failure"]
-    );
-    assert!(findings_for(&fixture("load-failure", "pass", "ok.yml")).is_empty());
-    assert_eq!(
-        findings_for(&fixture("load-failure", "noqa", "non-utf8.yml")),
-        ["load-failure"]
-    );
-}
-
-#[test]
-fn warning_fixtures() {
-    assert_eq!(
-        findings_for(&fixture("warning", "fail", "empty-playbook.yml")),
-        ["warning"]
-    );
-    assert!(findings_for(&fixture("warning", "pass", "with-task.yml")).is_empty());
-    assert!(findings_for(&fixture("warning", "noqa", "empty-with-noqa.yml")).is_empty());
+fn every_rule_fixture_matches_its_expected_findings() {
+    let bless = std::env::var_os("ANSILINT_BLESS").is_some();
+    let cases = fixture_cases(&workspace_root().join("tests/fixtures")).expect("fixtures");
+    assert!(!cases.is_empty(), "no rule fixtures found");
+    let mut mismatches = Vec::new();
+    for case in cases {
+        // The panicking probe rule exists only with this feature (H-B4).
+        if case.rule == "internal-error" && !cfg!(feature = "test-panic-rule") {
+            continue;
+        }
+        let actual = findings_json(&case.input);
+        if bless {
+            std::fs::create_dir_all(case.expected.parent().expect("parent")).expect("mkdir");
+            std::fs::write(&case.expected, &actual).expect("bless");
+            continue;
+        }
+        let expected = std::fs::read_to_string(&case.expected).unwrap_or_default();
+        if expected != actual {
+            mismatches.push(format!(
+                "{}\n--- expected ({})\n{expected}+++ actual\n{actual}",
+                case.input.display(),
+                case.expected.display()
+            ));
+        }
+    }
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
 }

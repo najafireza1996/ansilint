@@ -1,2 +1,3 @@
-# A test rule panics on this input; the runner converts it to internal-error.
+# The test-panic-rule probe panics on this marker:
+# ansilint-test-panic
 a: 1

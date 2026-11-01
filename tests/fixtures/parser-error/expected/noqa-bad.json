@@ -1,0 +1,9 @@
+[
+  {
+    "col": 1,
+    "line": 2,
+    "message": "while parsing a node, did not find expected node content",
+    "severity": "Error",
+    "tag": "parser-error"
+  }
+]

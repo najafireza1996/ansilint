@@ -50,10 +50,12 @@ dependencies = [
  "ansilint-model",
  "ansilint-output",
  "ansilint-rules",
+ "ansilint-testing",
  "ansilint-yaml",
  "globset",
  "ignore",
  "rayon",
+ "serde_json",
  "tempfile",
  "thiserror",
 ]

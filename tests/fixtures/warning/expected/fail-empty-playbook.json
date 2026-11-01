@@ -1,0 +1,9 @@
+[
+  {
+    "col": 3,
+    "line": 1,
+    "message": "empty playbook",
+    "severity": "Warning",
+    "tag": "warning"
+  }
+]

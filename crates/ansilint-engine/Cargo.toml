@@ -26,6 +26,8 @@ thiserror.workspace = true
 test-panic-rule = ["ansilint-rules/test-panic-rule"]
 
 [dev-dependencies]
+ansilint-testing = { version = "0.0.0", path = "../ansilint-testing" }
+serde_json.workspace = true
 tempfile.workspace = true
 
 [lints]

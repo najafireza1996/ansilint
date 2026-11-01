@@ -1,0 +1,9 @@
+[
+  {
+    "col": 1,
+    "line": 1,
+    "message": "file is not valid UTF-8",
+    "severity": "Error",
+    "tag": "load-failure"
+  }
+]

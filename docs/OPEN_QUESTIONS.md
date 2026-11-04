@@ -37,6 +37,20 @@ existing references stay valid. To reopen a decision, move it back to Open.
 | 23 | `enable_list: [rule[sub]]` sub-tag filtering (H-D6) | Maps to the owning rule for now; no Phase 1 rule has an opt-in sub-tag, so nothing can over-report | 2026-11-04 | P2-T6: per-sub-tag opt-in in `RuleMeta`, together with the `name` rule |
 | 26 | Working branch for Batch E | Batch E continues on `phase-1.5-batch-a`; the stale `phase-1-hardening` branch is not touched | 2026-11-04 | None as a task. The maintainer picks the branch to merge before `v0.0.1` is tagged |
 
+**Audit of #26 (2026-11-04).** The 10 commits only on `phase-1-hardening`
+(`dc33d52`…`28ebea8`) are not patch-identical to anything on `main`, but their
+content is: every test and function they add exists on `main` (`aae0499`,
+checked with `git grep -w "fn <name>" main`), as do the files of the three
+commits without functions (`contracts.rs`, the `model` fuzz target and seed,
+`COMPAT_POLICY.md`, `BENCHMARKS.md`, the `non_exhaustive` enums and the
+panic-strategy check). Four names are absent on `phase-1.5-batch-a` only because
+later work replaced them on purpose: `usage_errors_exit_with_one` →
+`usage_errors_exit_with_two_like_argparse` (H-E1),
+`handles_uppercase_extensions_by_sniffing` →
+`discovers_files_with_uppercase_extensions` (`b2beda7`), and the old fixture
+helpers in `tests/fixtures.rs` → the `ansilint-testing` harness (H-C9). Nothing
+is missing; both old branches stay untouched.
+
 ## Verified
 
 Record each verified fact with its source URL and the date. Do not delete entries

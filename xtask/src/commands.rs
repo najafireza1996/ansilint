@@ -104,7 +104,7 @@ fn run_ci() -> Result<()> {
         "-D",
         "warnings",
     ])?;
-    run_cargo(&["test", "--workspace", "--all-features"])?;
+    run_cargo(&["test", "--workspace", "--all-features", "--no-fail-fast"])?;
     run_cargo(&[
         "doc",
         "--workspace",

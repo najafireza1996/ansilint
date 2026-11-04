@@ -195,16 +195,31 @@ fn no_files_matched_exits_with_five() {
 
 #[test]
 fn failing_to_write_output_exits_with_one_on_every_platform() {
-    // Platform-neutral counterpart of the Unix-only permission test: stdout's
-    // read end is closed before the child starts, so writing the findings
-    // fails (EPIPE on Unix, ERROR_NO_DATA on Windows).
+    // Platform-neutral counterpart of the Unix-only permission test: stdout is
+    // a pipe whose reader has exited, so writing the findings fails on every OS
+    // (EPIPE on Unix, ERROR_NO_DATA on Windows). A read-only file does not work:
+    // Rust's stdout treats EBADF as success. `std::io::pipe` needs Rust 1.87
+    // (MSRV is 1.85), so the pipe comes from a short-lived child's stdin.
     let directory = tempfile::tempdir().expect("temp dir");
     write(&directory.path().join("bad.yml"), "a: [1,\n");
-    let (reader, writer) = std::io::pipe().expect("pipe");
-    drop(reader);
+    // Control: the same input with a working stdout exits 2, so the 1 below can
+    // only come from the failed write.
+    Command::cargo_bin("ansilint")
+        .expect("binary")
+        .current_dir(directory.path())
+        .assert()
+        .code(2);
+    let mut reader = std::process::Command::new(assert_cmd::cargo::cargo_bin("ansilint"))
+        .arg("--version")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("spawn reader");
+    let closed_pipe = reader.stdin.take().expect("piped stdin");
+    reader.wait().expect("reader exits");
     let status = std::process::Command::new(assert_cmd::cargo::cargo_bin("ansilint"))
         .current_dir(directory.path())
-        .stdout(writer)
+        .stdout(closed_pipe)
         .stderr(std::process::Stdio::null())
         .status()
         .expect("run");
@@ -212,7 +227,7 @@ fn failing_to_write_output_exits_with_one_on_every_platform() {
 }
 
 // Unix only: Windows directory permissions cannot be revoked with the
-// standard library; the pipe test above covers exit 1 on every platform.
+// standard library; the closed-pipe test above covers exit 1 on every platform.
 #[cfg(unix)]
 #[test]
 fn unexpected_io_failure_exits_with_one() {

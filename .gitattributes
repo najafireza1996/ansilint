@@ -1,2 +1,4 @@
 # Byte-exact fixtures: CRLF, BOM and tab cases must not be normalised.
-tests/fixtures/_valid/** -text
+# Every fixture is compared byte for byte (expected/*.json against engine output
+# written with \n), so Windows checkouts with core.autocrlf must not convert them.
+tests/fixtures/** -text

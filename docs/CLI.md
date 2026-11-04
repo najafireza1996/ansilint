@@ -75,8 +75,20 @@ has a test in `crates/ansilint-cli/tests/cli.rs`.
 | `2` | Usage error (upstream uses `argparse`, which exits 2), including an unknown `-f`/`-p` value | `usage_errors_exit_with_two_like_argparse` |
 | `3` | Invalid configuration: unreadable/missing config or ignore file, invalid value | `invalid_configuration_exits_with_three` |
 | `5` | No file was analyzed (upstream treats a run that linted nothing as a failure) | `no_files_matched_exits_with_five` |
-| `130` | Interrupted: default SIGINT termination, which shells report as 130 | `interrupt_terminates_with_sigint_which_shells_report_as_130` (Unix) |
-| `1` | Unexpected failure of ansilint itself outside rule isolation (e.g. an unreadable directory while walking) | `unexpected_io_failure_exits_with_one` (Unix) |
+| `130` | Interrupted: default SIGINT termination, which shells report as 130 (Unix; see Windows below) | `interrupt_terminates_with_sigint_which_shells_report_as_130` (Unix) |
+| `1` | Unexpected failure of ansilint itself outside rule isolation (e.g. an unreadable directory while walking, or stdout closed before the findings are written) | `failing_to_write_output_exits_with_one_on_every_platform`, `unexpected_io_failure_exits_with_one` (Unix) |
+
+### Ctrl-C on Windows
+
+ansilint installs no console control handler, so on Windows Ctrl-C ends the
+process through the default handler with `STATUS_CONTROL_C_EXIT`
+(`0xC000013A`). `cmd` shows it as `%ERRORLEVEL%` `-1073741510`, and PowerShell
+reports the same value in `$LASTEXITCODE`. It is never `130`: Windows has no
+signals, and no shell turns the status into 128 + signal number. Scripts that
+need to tell an interruption apart should test for that value. No test covers
+this: sending Ctrl-C to a child process needs the Win32
+`GenerateConsoleCtrlEvent` API, which requires `unsafe` or a new dependency
+(both ruled out, AGENTS.md).
 
 Upstream's `4` (lock timeout) is never emitted; `8` (violations fixed) is
 reserved for `--fix` in Phase 8. Usage errors exited `1` before H-E1 (H-C12);

@@ -21,13 +21,21 @@ and the old `TODO(verify)` form. Never guess upstream behavior.
 | 12 | GitHub organization, maintainer handles and required reviewers | Repository setup | `CODEOWNERS` uses `@ansilint/maintainers` until real handles exist | — |
 | 13 | Review the commit SHAs used to pin third-party GitHub Actions | CI hardening | Pinned to commit SHAs since Phase 0; review on every dependency update | — |
 | 14 | LSP stack (`tower-lsp-server` vs `lsp-server` + `lsp-types`) | Phase 9 | Decide by ADR in P9-T1 | — |
-| 18 | H-B3 asks for an explicit rayon worker stack size. Recursion is now capped at `MAX_NESTING_DEPTH` (128 levels, ~256 frames) and `Node::anchors` is iterative, so the default 2 MiB worker stack is ample; 100 000-deep inputs are tested on default stacks. A per-run custom pool would add thread spawns to every `lint()` call (hot for the LSP). | H-B3 | Not set; revisit if any recursion is added that is not bounded by `MAX_NESTING_DEPTH` | maintainer |
-| 19 | The walker skips hidden files and directories (`ignore` standard filters), so `.github/` and `.cache/` are never linted. Upstream lints hidden paths (users exclude `.github/` explicitly). Matching it would surface findings in CI workflow files once `yaml` lands. | Discovery | Keep skipping hidden paths (fewer findings) until a maintainer decides; then flip with a CHANGELOG entry | maintainer |
-| 21 | Precedence when both `.ansible-lint-ignore` and `.config/ansible-lint-ignore.txt` exist: upstream only says the file "should reside adjacent to the config file". We take `.ansible-lint-ignore` first (next to the config, then at the project root). | Ignore file | Keep; all single-file layouts are pinned by `finds_the_ignore_file_in_every_documented_layout` | maintainer |
-| 23 | H-D6 sub-tag filtering: `enable_list: [rule[sub]]` maps to the owning rule today (`enable_list_sub_tags_map_to_the_owning_rule`). Keeping only that sub-tag needs per-sub-tag opt-in metadata (`name[prefix]` is an opt-in sub-tag of the non-opt-in `name` rule), which no Phase 1 rule has. | Phase 2 `name` rule | Add sub-tag opt-in to `RuleMeta` with the `name` rule; until then no opt-in sub-tag exists, so nothing can over-report | maintainer |
-| 26 | The user named `phase-1-hardening` as the working branch, but that branch is the stale pre-split line (10 commits superseded by `phase-1-split` → `main`) and lacks the 40 Batch A–D commits. Committing there would require a merge or rebase, which was ruled out. | Batch E session | Batch E continues on `phase-1.5-batch-a`; the maintainer decides which branch to keep | maintainer |
 | 28 | Upstream tags the empty-playbook finding `syntax-check[empty-playbook]`; ours is `warning` with message `empty playbook`. Renaming changes a user-visible tag (ENG-30). | Phase 6 `syntax-check` (static equivalent) | Keep `warning` until `syntax-check` exists, then move it there with a CHANGELOG entry | maintainer |
 | 15 | ~~The line-oriented comment scanner can see a `#` inside a literal/folded block scalar as a comment~~ **Resolved (H-D1):** candidates inside quoted or block scalars are discarded using AST scalar spans, and `# noqa` reads only real comment tokens. | — | — | — |
+
+## Decided
+
+Rows the maintainer accepted as decided (H-E7). They keep their numbers so
+existing references stay valid. To reopen a decision, move it back to Open.
+
+| # | Question | Decision | Date | Follow-up |
+|---|---|---|---|---|
+| 18 | Explicit rayon worker stack size (H-B3) | No custom stack: recursion is capped at `MAX_NESTING_DEPTH` (128 levels) and `Node::anchors` is iterative; 100 000-deep inputs pass on the default 2 MiB stacks. A custom pool would spawn threads on every `lint()` call | 2026-11-04 | None. Revisit if recursion is added that `MAX_NESTING_DEPTH` does not bound |
+| 19 | Hidden files and directories (`.github/`, `.cache/`) | Keep skipping them, the conservative option (upstream lints them) | 2026-11-04 | P3-T8: decide from compat-harness data; flip with a CHANGELOG entry |
+| 21 | Precedence when both `.ansible-lint-ignore` and `.config/ansible-lint-ignore.txt` exist | `.ansible-lint-ignore` wins (next to the config, then at the project root); every single-file layout is pinned by `finds_the_ignore_file_in_every_documented_layout` | 2026-11-04 | None (H-C5 done). Re-check if upstream documents a precedence |
+| 23 | `enable_list: [rule[sub]]` sub-tag filtering (H-D6) | Maps to the owning rule for now; no Phase 1 rule has an opt-in sub-tag, so nothing can over-report | 2026-11-04 | P2-T6: per-sub-tag opt-in in `RuleMeta`, together with the `name` rule |
+| 26 | Working branch for Batch E | Batch E continues on `phase-1.5-batch-a`; the stale `phase-1-hardening` branch is not touched | 2026-11-04 | None as a task. The maintainer picks the branch to merge before `v0.0.1` is tagged |
 
 ## Verified
 

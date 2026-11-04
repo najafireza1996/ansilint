@@ -4,6 +4,10 @@ Checklist for the human maintainer when the repository is published (P0-T7).
 
 ## Branch protection (`main`)
 
+While the project has one maintainer (ADR 0004), enable only the last two
+items below (block force pushes and deletion; no linear-history requirement).
+Turn on the pull-request items when PR mode returns via a superseding ADR.
+
 - Require a pull request before merging.
 - Require at least **1 approving review** (ENG-46).
 - Require review from `CODEOWNERS` for architecture-sensitive paths:
@@ -12,9 +16,12 @@ Checklist for the human maintainer when the repository is published (P0-T7).
 - Require status checks: `quality (ubuntu-latest)`, `quality (macos-latest)`,
   `quality (windows-latest)`, `msrv`, `hygiene`, `commit-lint`, `deny`.
 - Require branches to be up to date before merging.
-- Require linear history; block force pushes and deletions.
-- The sole maintainer may self-merge only with green CI and a 24-hour wait
-  (ENG-46).
+- Block force pushes to and deletion of `main`. Do **not** require linear
+  history: the maintainer merges with `git merge --no-ff` (ADR 0004).
+- While there is one maintainer, the maintainer pushes merges to `main`
+  directly under the merge gate of ADR 0004 (ENGINEERING 12.9a); the review
+  rules above apply to external pull requests. GitHub cannot enforce status
+  checks on those direct pushes, so the gate is enforced by discipline.
 
 ## CODEOWNERS
 

@@ -99,10 +99,30 @@
 | ID | Rule | Enforced by |
 |---|---|---|
 | ENG-44 | Conventional Commits; one logical change per commit; **refactors never mixed with behavior changes** (separate commits, preferably separate PRs). | commit-lint in CI |
-| ENG-45 | PR ≤ ≈ 400 changed lines excluding fixtures/snapshots/generated files; larger work is split or discussed first. | CI size label, review |
-| ENG-46 | ≥ 1 approving review; `CODEOWNERS` covers `architecture.toml`, all `Cargo.toml`, `crates/ansilint-core/**`, `data/**`, `docs/adr/**`. The sole maintainer may self-merge only with green CI and a 24 h wait. | branch protection |
+| ENG-45 | PR (or, in solo mode, merged branch) ≤ ≈ 400 changed lines excluding fixtures/snapshots/generated files; larger work is split or discussed first. | CI size label, review |
+| ENG-46 | ≥ 1 approving review; `CODEOWNERS` covers `architecture.toml`, all `Cargo.toml`, `crates/ansilint-core/**`, `data/**`, `docs/adr/**`. A sole maintainer (or an AI agent acting for them) follows the no-PR workflow in Section 12.9a instead of this review step (ADR 0004). | branch protection |
 | ENG-47 | Reviewers use **Appendix D** and cite rule IDs; formatting nitpicks are automated away. | process |
 | ENG-48 | **Debt is explicit.** A shortcut requires `TODO(#issue)` plus an entry in `docs/TECH_DEBT.md` (what, why, when to fix, owner). Reviewed quarterly. | `xtask check` (every TODO has an entry) |
+
+### 12.9a Git workflow without pull requests (solo maintainer / AI agent)
+
+Applies while the project has a single maintainer. External contributors still use forks + pull requests (`CONTRIBUTING.md`); this workflow replaces ENG-46's review step for the maintainer only. Recorded as [ADR 0004](adr/0004-solo-git-workflow.md) (ENG-40, 12.14). Switch back to PR mode, via a superseding ADR, when a second maintainer or regular external contributors appear.
+
+1. **`main` is always green and releasable.** History on `main` only grows: no force-push, no rebase, no amend of anything already pushed.
+2. **Every change lives on a short-lived branch** cut from the latest `main`: `feat/<scope>-<slug>`, `fix/<id>-<slug>`, `refactor/…`, `chore/…`, `docs/…`. One concern per branch (ENG-44, ENG-45 — the ≈ 400-line guideline applies to the merged branch).
+3. **Commits:** Conventional Commits, one per task, each with its tests and its evidence row; every commit compiles and passes `cargo xtask ci`.
+4. **Merge gate — all must hold, checked rather than assumed:**
+   a. local `cargo xtask ci` and `cargo +<MSRV> check --workspace --all-features --all-targets` are green;
+   b. the branch is pushed and GitHub Actions is green on **Linux, macOS and Windows for the exact head commit** (verify with `gh run list` / `gh run view --json`; CI must be triggered on branch pushes, not only on pull requests);
+   c. docs, `CHANGELOG.md` and the phase report are updated;
+   d. no known open P0/P1 finding;
+   e. for the last merge of a phase: the independent review (Appendix A.4) has been run and recorded — otherwise the phase may be merged but **not tagged**;
+   f. no gate, lint, threshold or test was weakened in the branch without an ADR.
+5. **Merge:** `git merge --no-ff <branch>` into `main` (keeps per-task commits visible), message `merge(<scope>): <summary>`; push `main`; delete the branch with `git branch -d` and `git push origin --delete <branch>`.
+6. **Stop-the-line:** CI also runs on `main`. If it turns red, nothing else is merged until it is fixed forward on a `fix/` branch or the merge commit is reverted (`git revert -m 1`).
+7. **Tags:** annotated tags only on `main`, only after the phase gate (Section 7); never move or delete a pushed tag. Before pushing a tag, inspect the workflows for tag-triggered release jobs.
+8. **Never:** force-push, rewrite published history, merge on red or unknown CI, use `--no-verify`, disable or weaken a check to get green, delete a branch that has unmerged commits (`git branch -D`), or touch anything outside the repository.
+9. **Known limitation:** because the workflow pushes directly to `main`, GitHub cannot enforce required status checks server-side for direct pushes. Rules 4 and 6 are enforced by discipline and by the stop-the-line rule. Still enable repository rules that block force-pushes to and deletion of `main`.
 
 ### 12.10 Tooling configuration (starting point — adjust, but keep the intent)
 

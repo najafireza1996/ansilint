@@ -31,11 +31,23 @@ Read [docs/ENGINEERING.md](docs/ENGINEERING.md). The short version:
 - a bug fix starts with a failing test;
 - user-visible changes update docs and `CHANGELOG.md`.
 
+## How changes reach `main`
+
+- **External contributors:** fork the repository, push a branch to your fork
+  and open a pull request (walkthrough below). CI must be green and a
+  maintainer reviews it (ENG-46).
+- **The maintainer** (and an AI agent acting for them) does not open pull
+  requests while the project has one maintainer
+  ([ADR 0004](docs/adr/0004-solo-git-workflow.md), ENGINEERING 12.9a): cut a
+  short-lived branch from `main`, push it, wait until CI is green on Linux,
+  macOS and Windows for the exact head commit, then `git merge --no-ff` into
+  `main`, push, and delete the branch with `git branch -d`. Never force-push.
+
 ## First PR walkthrough
 
 1. Pick a `good first issue` (or a row from [docs/PARITY.md](docs/PARITY.md)).
 2. Comment on the issue so work is not duplicated.
-3. Create a branch: `git switch -c fix/parser-error-span`.
+3. Fork the repository and create a branch: `git switch -c fix/parser-error-span`.
 4. Write the failing test first. Run it and confirm it fails for the expected reason.
 5. Make the smallest change that passes. Run `cargo xtask ci`.
 6. Update docs in the same commit if behavior is user-visible.

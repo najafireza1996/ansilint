@@ -9,6 +9,8 @@ releases may change output formats, but every change is listed here.
 
 ### Fixed
 
+- A failed write of `-L`/`-T`/`-P` or `--generate-ignore` output now exits `1`
+  with an error message instead of panicking.
 - "empty playbook" is reported only for a playbook file with no data (empty or
   comment-only), as ansible-core does; a play without tasks such as
   `- hosts: all` with `gather_facts` is no longer flagged. `# noqa` now works in

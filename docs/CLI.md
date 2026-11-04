@@ -76,7 +76,7 @@ has a test in `crates/ansilint-cli/tests/cli.rs`.
 | `3` | Invalid configuration: unreadable/missing config or ignore file, invalid value | `invalid_configuration_exits_with_three` |
 | `5` | No file was analyzed (upstream treats a run that linted nothing as a failure) | `no_files_matched_exits_with_five` |
 | `130` | Interrupted: default SIGINT termination, which shells report as 130 (Unix; see Windows below) | `interrupt_terminates_with_sigint_which_shells_report_as_130` (Unix) |
-| `1` | Unexpected failure of ansilint itself outside rule isolation (e.g. an unreadable directory while walking, or stdout closed before the findings are written) | `failing_to_write_output_exits_with_one_on_every_platform`, `unexpected_io_failure_exits_with_one` (Unix) |
+| `1` | Unexpected failure of ansilint itself outside rule isolation (e.g. an unreadable directory while walking, or stdout closed before the findings are written) | `write_failure_maps_to_exit_code_one` (unit test of `run` with a writer that always fails), `unexpected_io_failure_exits_with_one` (Unix) |
 
 ### Ctrl-C on Windows
 

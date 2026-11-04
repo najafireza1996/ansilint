@@ -3,13 +3,10 @@
 //! It must not: implement linting logic itself; it parses arguments and delegates
 //! to `ansilint-engine` (and `ansilint-lsp` once the language server exists).
 #![forbid(unsafe_code)]
-#![allow(
-    clippy::print_stdout,
-    clippy::print_stderr,
-    reason = "the CLI writes user-facing output"
-)]
 
 use std::collections::BTreeSet;
+use std::ffi::OsString;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -109,12 +106,35 @@ const NO_FILES_MATCHED: u8 = 5;
 const INTERNAL_FAILURE: u8 = 1;
 
 fn main() -> ExitCode {
-    // clap exits 2 on usage errors and 0 for --help/--version.
-    let cli = Cli::parse();
-    match run(&cli) {
+    run(
+        std::env::args_os(),
+        &mut std::io::stdout().lock(),
+        &mut std::io::stderr().lock(),
+    )
+}
+
+/// Runs the CLI against injected output streams so every exit-code mapping,
+/// including a failed write, is testable without OS tricks (ENG-02).
+fn run<I, T>(args: I, stdout: &mut impl Write, stderr: &mut impl Write) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    let cli = match Cli::try_parse_from(args) {
+        Ok(cli) => cli,
+        // clap uses 2 for usage errors and 0 for --help/--version, like argparse.
+        Err(error) => {
+            let stream: &mut dyn Write = if error.use_stderr() { stderr } else { stdout };
+            // Nothing more can be reported if writing the usage text fails.
+            let _ = write!(stream, "{}", error.render());
+            return ExitCode::from(u8::try_from(error.exit_code()).unwrap_or(VIOLATIONS_FOUND));
+        }
+    };
+    match lint_command(&cli, stdout, stderr) {
         Ok(code) => code,
         Err(error) => {
-            eprintln!("ansilint: {error:#}");
+            // A failing stderr must not hide the exit code.
+            let _ = writeln!(stderr, "ansilint: {error:#}");
             ExitCode::from(failure_code(&error))
         }
     }
@@ -129,15 +149,15 @@ fn failure_code(error: &anyhow::Error) -> u8 {
     }
 }
 
-fn run(cli: &Cli) -> Result<ExitCode> {
+fn lint_command(cli: &Cli, stdout: &mut impl Write, stderr: &mut impl Write) -> Result<ExitCode> {
     if cli.list_rules {
-        print_rules();
+        print_rules(stdout)?;
     }
     if cli.list_tags {
-        print_tags();
+        print_tags(stdout)?;
     }
     if cli.list_profiles {
-        print_profiles();
+        print_profiles(stdout)?;
     }
     if cli.list_rules || cli.list_tags || cli.list_profiles {
         return Ok(ExitCode::SUCCESS);
@@ -147,17 +167,15 @@ fn run(cli: &Cli) -> Result<ExitCode> {
     if cli.generate_ignore {
         let path = ignore_path(&result, &options.cwd);
         generate_ignore(&result, &path)?;
-        println!("wrote {}", path.display());
+        writeln!(stdout, "wrote {}", path.display())?;
         return Ok(ExitCode::SUCCESS);
     }
     if !result.config.quiet {
         for warning in &result.warnings {
-            eprintln!("ansilint: warning: {warning}");
+            writeln!(stderr, "ansilint: warning: {warning}")?;
         }
     }
-    let stdout = std::io::stdout();
-    let mut lock = stdout.lock();
-    result.render(cli.format, &mut lock)?;
+    result.render(cli.format, stdout)?;
     Ok(if result.has_fatal(result.config.strict) {
         ExitCode::from(VIOLATIONS_FOUND)
     } else if result.files_linted == 0 {
@@ -215,25 +233,31 @@ fn ignore_path(result: &ansilint_engine::LintResult, cwd: &Path) -> PathBuf {
     cwd.join(".ansible-lint-ignore")
 }
 
-fn print_rules() {
+fn print_rules(out: &mut impl Write) -> std::io::Result<()> {
     for rule in ansilint_engine::rules() {
         let meta = rule.meta();
-        println!("{:<24} {:<12} {}", meta.id, meta.profile, meta.summary);
+        writeln!(out, "{:<24} {:<12} {}", meta.id, meta.profile, meta.summary)?;
     }
+    Ok(())
 }
 
-fn print_tags() {
+fn print_tags(out: &mut impl Write) -> std::io::Result<()> {
     let mut tags = BTreeSet::new();
     for rule in ansilint_engine::rules() {
         tags.extend(rule.meta().tags.iter().copied());
     }
     for tag in tags {
-        println!("{tag}");
+        writeln!(out, "{tag}")?;
     }
+    Ok(())
 }
 
-fn print_profiles() {
+fn print_profiles(out: &mut impl Write) -> std::io::Result<()> {
     for profile in Profile::ALL {
-        println!("{profile}");
+        writeln!(out, "{profile}")?;
     }
+    Ok(())
 }
+
+#[cfg(test)]
+mod tests;

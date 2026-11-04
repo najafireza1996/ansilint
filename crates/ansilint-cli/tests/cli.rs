@@ -193,6 +193,26 @@ fn no_files_matched_exits_with_five() {
         .code(5);
 }
 
+#[test]
+fn failing_to_write_output_exits_with_one_on_every_platform() {
+    // Platform-neutral counterpart of the Unix-only permission test: stdout's
+    // read end is closed before the child starts, so writing the findings
+    // fails (EPIPE on Unix, ERROR_NO_DATA on Windows).
+    let directory = tempfile::tempdir().expect("temp dir");
+    write(&directory.path().join("bad.yml"), "a: [1,\n");
+    let (reader, writer) = std::io::pipe().expect("pipe");
+    drop(reader);
+    let status = std::process::Command::new(assert_cmd::cargo::cargo_bin("ansilint"))
+        .current_dir(directory.path())
+        .stdout(writer)
+        .stderr(std::process::Stdio::null())
+        .status()
+        .expect("run");
+    assert_eq!(status.code(), Some(1), "{status:?}");
+}
+
+// Unix only: Windows directory permissions cannot be revoked with the
+// standard library; the pipe test above covers exit 1 on every platform.
 #[cfg(unix)]
 #[test]
 fn unexpected_io_failure_exits_with_one() {
@@ -210,6 +230,9 @@ fn unexpected_io_failure_exits_with_one() {
     assert_eq!(output.status.code(), Some(1), "{output:?}");
 }
 
+// Unix only: sending Ctrl-C to a child on Windows needs the Win32
+// `GenerateConsoleCtrlEvent` API (`unsafe` or a new dependency, both ruled
+// out). Windows behavior is documented in docs/CLI.md.
 #[cfg(unix)]
 #[test]
 fn interrupt_terminates_with_sigint_which_shells_report_as_130() {

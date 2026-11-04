@@ -1,12 +1,11 @@
 # Architecture-sensitive paths require maintainer review (ENG-46).
-# Replace the placeholder team with real accounts before the first public release
-# (docs/OPEN_QUESTIONS.md, item 12).
+# Add further maintainers here when they join (docs/OPEN_QUESTIONS.md, Decided #12).
 
-* @ansilint/maintainers
+* @najafireza1996
 
-/architecture.toml @ansilint/maintainers
-/**/Cargo.toml @ansilint/maintainers
-/CODEOWNERS @ansilint/maintainers
-/crates/ansilint-core/ @ansilint/maintainers
-/data/ @ansilint/maintainers
-/docs/adr/ @ansilint/maintainers
+/architecture.toml @najafireza1996
+/**/Cargo.toml @najafireza1996
+/CODEOWNERS @najafireza1996
+/crates/ansilint-core/ @najafireza1996
+/data/ @najafireza1996
+/docs/adr/ @najafireza1996

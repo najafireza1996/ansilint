@@ -18,8 +18,8 @@ Checklist for the human maintainer when the repository is published (P0-T7).
 
 ## CODEOWNERS
 
-`CODEOWNERS` currently uses `@ansilint/maintainers` and must be replaced with real
-accounts before the first public release (OPEN_QUESTIONS #12).
+`CODEOWNERS` names the sole maintainer, `@najafireza1996` (H-E3, OPEN_QUESTIONS
+Decided #12). Add accounts when further maintainers join.
 
 ## Labels
 

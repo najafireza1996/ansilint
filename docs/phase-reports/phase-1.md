@@ -79,7 +79,7 @@ Upstream pinned at ansible-lint `67a48717843c4d5d37681294cb5c9967781b0a31`
 |---|---|---|---|---|
 | H-E1 exit codes | `7fd2650` | `cli::clean_files_exit_with_zero`, `usage_errors_exit_with_two_like_argparse`, `invalid_configuration_exits_with_three`, `no_files_matched_exits_with_five`, `unexpected_io_failure_exits_with_one`, `interrupt_terminates_with_sigint_which_shells_report_as_130`, `parser_errors_exit_with_two`, `warnings_pass_unless_strict` | `Unexpected return code, failed var == 3` / `code=1`; `failed var == 5` / `code=0`; `failed var == 2` / `code=1` | 16/16 CLI tests pass |
 | H-E2 default kinds | `8cef04b` | `discovery::tests::default_kinds_match_upstream_order_for_sample_paths` (43 paths), `default_kinds_file_is_pinned_and_complete` | 24 mismatches, e.g. `playbooks/site.yml: expected playbook, got yaml`, `roles/x/handlers/sub/main.yml: expected yaml, got handlers` | 0 mismatches; corpus still 0 findings |
-| H-E3 CODEOWNERS handle | — | — | — | **Not done:** the session brief still carried the placeholder `<FILL_IN_YOUR_HANDLE>`, so `CODEOWNERS` is unchanged |
+| H-E3 CODEOWNERS handle | this commit | `grep -c '@ansilint/maintainers' CODEOWNERS` | `7` (placeholder team on every line) | `0`; every path owned by `@najafireza1996` |
 | H-E4 marker convention | `3916894` | `check::tests::verify_markers_must_name_an_open_question_row` | `got ["crates/a/src/lib.rs:4: TODO must be written as TODO(#<issue>)"]` (Q99 and bare marker not rejected) | All three violations rejected; `xtask check: ok` |
 | H-E5 `--strict` fails on any finding | `a130a13` | `tests::strict_fails_on_any_remaining_finding_including_info`, `cli::warnings_pass_unless_strict` | `Info` finding left `has_fatal` false under strict | Exit 2 on any remaining finding; `docs/CLI.md` updated |
 | H-E6 corpus and kinds | `863296d` (plus `d9d8f75`, `b2beda7` found by it) | `valid_corpus::valid_corpus_lints_with_zero_findings` (55 files), `discovery::tests::every_previously_missing_kind_is_detected_or_documented`, `parser::tests::comments_in_a_stream_without_documents_are_kept`, `warning::tests::a_play_without_tasks_is_not_an_empty_playbook` | Facts-only play reported `warning` (P0); comment-only `# noqa` ignored; nested-path files fail the corpus when `*` is mutated to cross `/` | 0 findings; all 13 kinds pinned |
@@ -107,6 +107,5 @@ Upstream pinned at ansible-lint `67a48717843c4d5d37681294cb5c9967781b0a31`
    `aae0499..HEAD` and resolve every P0/P1 finding.
 3. Have the maintainer review `docs/OPEN_QUESTIONS.md` Open item 28 and the
    Decided table (items 18, 19, 21, 23 and 26, moved there in H-E7).
-4. H-E3: replace `@ansilint/maintainers` in `CODEOWNERS` with a real handle.
 
 Only then may `v0.0.1` be tagged and Phase 2 start.

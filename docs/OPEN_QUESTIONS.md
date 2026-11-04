@@ -18,7 +18,6 @@ and the old `TODO(verify)` form. Never guess upstream behavior.
 | 9 | Schema licensing and vendoring vs user-cache fetch | Phase 6 | Vendor only schemas with a confirmed compatible license | — |
 | 10 | Trademark-safe project name and final binary/crate names | Before first public release | Keep `ansilint` as the working name; run a global rename | — |
 | 11 | `# noqa` exact grammar, task-level `skip_ansible_lint`, and whether any tags are non-skippable | Phase 1 post-processing | `rule` and `rule[sub]` are implemented; `schema`/parser/load/internal errors are non-skippable by noqa, `skip_list`, ignore `skip` and `tags` (they may be downgraded, H-D2); task-level skipping is not implemented | — |
-| 12 | GitHub organization, maintainer handles and required reviewers | Repository setup | `CODEOWNERS` uses `@ansilint/maintainers` until real handles exist | — |
 | 13 | Review the commit SHAs used to pin third-party GitHub Actions | CI hardening | Pinned to commit SHAs since Phase 0; review on every dependency update | — |
 | 14 | LSP stack (`tower-lsp-server` vs `lsp-server` + `lsp-types`) | Phase 9 | Decide by ADR in P9-T1 | — |
 | 28 | Upstream tags the empty-playbook finding `syntax-check[empty-playbook]`; ours is `warning` with message `empty playbook`. Renaming changes a user-visible tag (ENG-30). | Phase 6 `syntax-check` (static equivalent) | Keep `warning` until `syntax-check` exists, then move it there with a CHANGELOG entry | maintainer |
@@ -31,6 +30,7 @@ existing references stay valid. To reopen a decision, move it back to Open.
 
 | # | Question | Decision | Date | Follow-up |
 |---|---|---|---|---|
+| 12 | GitHub maintainer handles and required reviewers | `CODEOWNERS` names `@najafireza1996`, the sole maintainer (H-E3) | 2026-11-04 | None. Add handles when a second maintainer joins (ADR 0004) |
 | 18 | Explicit rayon worker stack size (H-B3) | No custom stack: recursion is capped at `MAX_NESTING_DEPTH` (128 levels) and `Node::anchors` is iterative; 100 000-deep inputs pass on the default 2 MiB stacks. A custom pool would spawn threads on every `lint()` call | 2026-11-04 | None. Revisit if recursion is added that `MAX_NESTING_DEPTH` does not bound |
 | 19 | Hidden files and directories (`.github/`, `.cache/`) | Keep skipping them, the conservative option (upstream lints them) | 2026-11-04 | P3-T8: decide from compat-harness data; flip with a CHANGELOG entry |
 | 21 | Precedence when both `.ansible-lint-ignore` and `.config/ansible-lint-ignore.txt` exist | `.ansible-lint-ignore` wins (next to the config, then at the project root); every single-file layout is pinned by `finds_the_ignore_file_in_every_documented_layout` | 2026-11-04 | None (H-C5 done). Re-check if upstream documents a precedence |

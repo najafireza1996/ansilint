@@ -18,3 +18,6 @@
 !/fuzz/corpus/config/seed.yml
 /fuzz/corpus/ignore_file/*
 !/fuzz/corpus/ignore_file/seed.txt
+
+# graphify knowledge graph (local only)
+graphify-out/
